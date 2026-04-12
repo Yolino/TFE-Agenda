@@ -324,10 +324,10 @@
                     const entryToEdit = this.planningEntries.find(entry => entry.id === entryId);
                     if (entryToEdit) {
                         this.dayData.status = entryToEdit.status;
-                        this.dayData.start_time = entryToEdit.start_time.substr(0, 5);
-                        this.dayData.end_time = entryToEdit.end_time.substr(0, 5);
-                        this.dayData.start_time_afternoon = entryToEdit.start_time_afternoon ? entryToEdit.start_time_afternoon.substr(0, 5) : null;
-                        this.dayData.end_time_afternoon = entryToEdit.end_time_afternoon ? entryToEdit.end_time_afternoon.substr(0, 5) : null;
+                        this.dayData.start_time = entryToEdit.start_time ? entryToEdit.start_time.substr(0, 5) : startTime;
+                        this.dayData.end_time = entryToEdit.end_time ? entryToEdit.end_time.substr(0, 5) : endTime;
+                        this.dayData.start_time_afternoon = entryToEdit.start_time_afternoon ? entryToEdit.start_time_afternoon.substr(0, 5) : startTimeAfternoon;
+                        this.dayData.end_time_afternoon = entryToEdit.end_time_afternoon ? entryToEdit.end_time_afternoon.substr(0, 5) : endTimeAfternoon;
                     }
                 } else {
                     // Réinitialiser `dayData` pour une nouvelle entrée
