@@ -41,9 +41,9 @@ class AdminController extends Controller
         });
 
         $daysInWeek = $daysInWeek->map(function ($day) use ($selectedYear, $selectedWeek) {
-            if ($day->weekOfYear === 1 && $selectedWeek > 51) {
+            if ($day->weekOfYear() === 1 && $selectedWeek > 51) {
                 return $day->copy()->setYear($selectedYear + 1);
-            } elseif ($day->weekOfYear > 51 && $selectedWeek === 1) {
+            } elseif ($day->weekOfYear() > 51 && $selectedWeek === 1) {
                 return $day->copy()->setYear($selectedYear - 1);
             }
             return $day;
@@ -127,8 +127,6 @@ class AdminController extends Controller
 
         $pdfOptions = $pdf->getOptions();
         $pdfOptions->set('defaultPaperSize', 'A4');
-        $pdfOptions->set('isHtml5ParserEnabled', true);
-        $pdfOptions->set('isRemoteEnabled', true);
         $pdfOptions->set('margin_top', '10mm');
         $pdfOptions->set('margin_right', '10mm');
         $pdfOptions->set('margin_bottom', '10mm');
@@ -309,15 +307,16 @@ class AdminController extends Controller
                 $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
                 $sheet->getStyle('C' . $row)->getFont()->setSize(5);
 
-                $fixeStart = strpos($entriesByUser->first()->user->fixe, $entriesByUser->first()->user->fixe);
-                $fixeLength = strlen($entriesByUser->first()->user->fixe);
-
                 $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
-                $richText->createText($entriesByUser->first()->user->name . ' ' . $entriesByUser->first()->user->firstname . "\n" . $entriesByUser->first()->user->phone . "\n");
+                $phoneStr = (string)($entriesByUser->first()->user->phone ?? '');
+                $richText->createText($entriesByUser->first()->user->name . ' ' . $entriesByUser->first()->user->firstname . "\n" . $phoneStr . "\n");
 
-                $fixeText = $richText->createTextRun($entriesByUser->first()->user->fixe);
-                $fixeText->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
-                $fixeText->getFont()->setBold(true);
+                $fixeStr = (string)($entriesByUser->first()->user->fixe ?? '');
+                if (!empty($fixeStr)) {
+                    $fixeText = $richText->createTextRun($fixeStr);
+                    $fixeText->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
+                    $fixeText->getFont()->setBold(true);
+                }
 
                 $sheet->setCellValue('B' . $row, $richText);
                 $sheet->getStyle('B' . $row)->applyFromArray([
