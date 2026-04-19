@@ -7,6 +7,7 @@ use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\CongeController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\JustificatifAbsenceController;
 // use App\Http\Controllers\CronController;
 
 /*
@@ -65,13 +66,22 @@ Route::get('/planning', [AdminController::class, 'planning'])->name('planning')-
 Route::prefix('/mes-conges')->controller(CongeController::class)->name('mes-conges.')->middleware('auth')->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/', 'store')->name('store');
-    Route::get('/update/{id}', 'update')->name('update');
+    Route::put('/update/{id}', 'update')->name('update');
+    Route::get('/send/{id}', 'send')->name('send');
     Route::get('/destroy/{id}', 'destroy')->name('destroy');
     Route::get('/pdf/{id}', 'generatePDF')->name('pdf');
 });
 
-Route::prefix('/admin')->controller(AdminController::class)->name('admin.')->middleware('auth', 'is_admin')->group(function () {
-    Route::get('/user', 'user')->name('user');
+// JUSTIFICATIFS D'ABSENCE
+Route::prefix('/justificatif-absence')->controller(JustificatifAbsenceController::class)->name('justificatif-absence.')->middleware('auth')->group(function () {
+    Route::get('/', 'index')->name('index');
+});
+
+Route::prefix('/admin')->name('admin.')->middleware('auth', 'is_admin')->group(function () {
+    Route::get('/user', [AdminController::class, 'user'])->name('user');
+    Route::get('/conges', function () {
+        return view('admin.conges');
+    })->name('conges');
 });
 
 // CRON

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(php artisan:*)",
+      "Bash(php -r \"echo json_encode\\('09:00', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT\\);\")",
+      "Bash(node -e ':*)",
+      "Bash(python3 -c ':*)"
+    ]
+  }
+}

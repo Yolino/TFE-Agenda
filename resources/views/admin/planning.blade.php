@@ -82,9 +82,19 @@
                     $textColorClasses = match ([$entry->status ?? null]) {
                         ['recup'] => 'text-red-700',
                         ['indisponible'] => 'text-red-700',
+                        ['maladie'] => 'text-pink-700',
                         ['tele_travail'] => 'text-green-700',
                         default => 'text-gray-800',
                     };
+                @endphp
+                @php
+                    $congeTypeLabels = [
+                        'recup' => 'Récup.',
+                        'conge' => 'Congé (VA)',
+                        'css' => 'CSS',
+                        'visite' => 'Visite méd.',
+                        'autre' => 'Autre',
+                    ];
                 @endphp
                 <div class="border p-2 rounded {{ $bgClasses }}">
                     @if($entry)
@@ -94,6 +104,11 @@
                                 {{ $entry->status === 'tele_travail' ? 'Domicile' : ucfirst($entry->status) }}
                             </span>
                         </p>
+                        @if($entry->demandeConge && $entry->demandeConge->status === 'acceptee')
+                            <p class="text-xs text-center italic opacity-80 {{ $textColorClasses }}">
+                                {{ $congeTypeLabels[$entry->demandeConge->type] ?? $entry->demandeConge->type }}
+                            </p>
+                        @endif
                         <ul class="text-xs text-center mt-2 {{ $textColorClasses }}">
                             @if($entry->start_time && $entry->end_time)
                                 <li>{{ $entry->start_time }} à {{ $entry->end_time }}</li>

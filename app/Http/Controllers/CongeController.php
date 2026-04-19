@@ -13,24 +13,47 @@ use PDF;
 
 class CongeController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $conges = DemandeConge::where('user_id', auth()->id())->get();
-
-        // Définir la locale de Carbon en français
         Carbon::setLocale('fr');
 
-        $congesFormatted = $conges->map(function ($conge) {
-            $conge->formattedStartDate = Carbon::parse($conge->start_date)->translatedFormat('d M Y');
-            $conge->formattedEndDate = Carbon::parse($conge->end_date)->translatedFormat('d M Y');
-            return $conge;
+        $today = Carbon::today();
+
+        $format = fn ($conge) => tap($conge, function ($c) {
+            $c->formattedStartDate = Carbon::parse($c->start_date)->translatedFormat('d M Y');
+            $c->formattedEndDate   = Carbon::parse($c->end_date)->translatedFormat('d M Y');
         });
 
-        return view('conges.index', [
-            'conges' => $congesFormatted
-        ]);
-    }
+        $conges = DemandeConge::where('user_id', auth()->id())
+            ->where('end_date', '>=', $today)
+            ->orderBy('start_date')
+            ->get()
+            ->map($format);
 
+        // Années disponibles pour le filtre historique
+        $anneesDisponibles = DemandeConge::where('user_id', auth()->id())
+            ->where('end_date', '<', $today)
+            ->selectRaw('YEAR(end_date) as annee')
+            ->distinct()
+            ->orderBy('annee', 'desc')
+            ->pluck('annee');
+
+        $selectedYear = $request->query('year', (string) $today->year);
+
+        $historiqueQuery = DemandeConge::where('user_id', auth()->id())
+            ->where('end_date', '<', $today);
+
+        if ($selectedYear !== 'all') {
+            $historiqueQuery->whereYear('end_date', $selectedYear);
+        }
+
+        $historique = $historiqueQuery
+            ->orderBy('start_date', 'desc')
+            ->get()
+            ->map($format);
+
+        return view('conges.index', compact('conges', 'historique', 'anneesDisponibles', 'selectedYear'));
+    }
 
     public function store(CongeRequest $congeRequest): RedirectResponse
     {
@@ -67,18 +90,36 @@ class CongeController extends Controller
         return $pdf->stream('demande-conge-' . $conge->id . '.pdf');
     }
 
-    public function update(CongeRequest $congeRequest, $id): JsonResponse
+    public function update(CongeRequest $congeRequest, $id): RedirectResponse
     {
-        // Valider les données de la requête
-        $validatedData = DemandeConge::findOrFail($id);
-        $validatedData->update($congeRequest->validated());
+        $conge = DemandeConge::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'en_cours')
+            ->firstOrFail();
 
-        return response()->json(['message' => 'Modification réussie'], 200);
+        $conge->update($congeRequest->validated());
+
+        return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été modifiée.');
+    }
+
+    public function send($id): RedirectResponse
+    {
+        $conge = DemandeConge::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'en_cours')
+            ->firstOrFail();
+
+        $conge->update(['status' => 'envoyee']);
+
+        return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été envoyée.');
     }
 
     public function destroy($id)
     {
-        $conge = DemandeConge::findOrFail($id);
+        $conge = DemandeConge::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
         $conge->delete();
 
         return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été supprimée.');

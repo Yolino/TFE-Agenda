@@ -52,6 +52,7 @@ class AdminController extends Controller
         $planningEntries = $users->map(function ($user) use ($daysInWeek) {
             $entries = Planning::where('user_id', $user->id)
                 ->whereIn('date', $daysInWeek->map->toDateString())
+                ->with('demandeConge')
                 ->get();
 
             if ($entries->isEmpty()) {
@@ -81,6 +82,7 @@ class AdminController extends Controller
 
                 $entries = Planning::where('user_id', $user->id)
                     ->whereIn('date', $daysInWeek->map->toDateString())
+                    ->with('demandeConge')
                     ->get();
             }
 

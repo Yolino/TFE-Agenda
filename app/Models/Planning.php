@@ -20,6 +20,7 @@ class Planning extends Model
         'css' => 5,
         'indisponible' => 6,
         'neant' => 7,
+        'maladie' => 8,
     ];
 
     protected $fillable = [

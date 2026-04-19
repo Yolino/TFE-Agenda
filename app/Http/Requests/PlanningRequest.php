@@ -24,7 +24,7 @@ class PlanningRequest extends FormRequest
         return [
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'status' => 'required|in:bureau,tele_travail,conge,recup,css,indisponible',
+            'status' => 'required|in:bureau,tele_travail,conge,recup,css,indisponible,maladie',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'start_time_afternoon' => 'nullable|date_format:H:i',

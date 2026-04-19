@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Gate;
 use App\Http\Requests\PlanningRequest;
 use App\Models\Planning;
 use App\Models\PlanningTemplate;
+use App\Models\User;
 use Carbon\Carbon;
 
 class PlanningController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;
@@ -20,6 +22,17 @@ class PlanningController extends Controller
         $endTime = '12:30';
         $startTimeAfternoon = '13:00';
         $endTimeAfternoon = '16:30';
+
+        // Admin peut consulter le planning d'un autre utilisateur
+        $targetUserId = auth()->id();
+        $users = collect();
+
+        if (auth()->user()->is_admin()) {
+            $targetUserId = (int) $request->input('user_id', auth()->id());
+            $users = User::where('actif', true)->orderBy('name')->get();
+        }
+
+        Gate::authorize('manage-planning', $targetUserId);
 
         // Génération des options de mois
         $months = collect(range(1, 12))->mapWithKeys(function ($month) {
@@ -34,7 +47,8 @@ class PlanningController extends Controller
             return Carbon::now()->startOfWeek()->addDays($day)->locale('fr')->isoFormat('dddd');
         });
 
-            $userEntries = Planning::where('user_id', auth()->id())
+            $userEntries = Planning::where('user_id', $targetUserId)
+                ->with('demandeConge')
                 ->get()
                 ->map(function ($entry) {
                     return [
@@ -46,6 +60,8 @@ class PlanningController extends Controller
                         'end_time' => $entry->end_time ? $entry->end_time : null,
                         'start_time_afternoon' => $entry->start_time_afternoon ? $entry->start_time_afternoon : null,
                         'end_time_afternoon' => $entry->end_time_afternoon ? $entry->end_time_afternoon : null,
+                        'demande_conge_status' => $entry->demandeConge?->status,
+                        'demande_conge_type' => $entry->demandeConge?->type,
                     ];
                 });
 
@@ -59,13 +75,17 @@ class PlanningController extends Controller
             'endTime',
             'startTimeAfternoon',
             'endTimeAfternoon',
-            'userEntries'
+            'userEntries',
+            'targetUserId',
+            'users'
         ));
     }
 
     public function store(PlanningRequest $planningRequest): JsonResponse
     {
         $credentials = $planningRequest->validated();
+
+        Gate::authorize('manage-planning', (int) $credentials['user_id']);
 
         Planning::create([
             'user_id' => $credentials['user_id'],
@@ -82,12 +102,14 @@ class PlanningController extends Controller
 
     public function fillWeek(Request $request, $year, $month, $weekNumber): JsonResponse
     {
-        $userTemplates = PlanningTemplate::where('user_id', auth()->id())
+        $targetUserId = (int) $request->input('user_id', auth()->id());
+        Gate::authorize('manage-planning', $targetUserId);
+
+        $userTemplates = PlanningTemplate::where('user_id', $targetUserId)
             ->get()
             ->keyBy('day_of_week');
-        $holidays = $request->input('holidays', []); // Récupère les jours fériés du corps de la requête
+        $holidays = $request->input('holidays', []);
 
-        // Définir la locale de Carbon en français
         Carbon::setLocale('fr');
 
         $startDate = new Carbon("{$year}-{$month}-01");
@@ -116,7 +138,7 @@ class PlanningController extends Controller
 
             Planning::updateOrCreate(
                 [
-                    'user_id' => auth()->id(),
+                    'user_id' => $targetUserId,
                     'date' => $startDate->format('Y-m-d')
                 ],
                 [
@@ -134,12 +156,13 @@ class PlanningController extends Controller
         return response()->json(['message' => 'Semaine remplie avec succès'], 200);
     }
 
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $userId = auth()->id(); // Récupère l'ID de l'utilisateur connecté
+        $targetUserId = (int) $request->input('user_id', auth()->id());
+        Gate::authorize('manage-planning', $targetUserId);
 
-        // Récupère les entrées de planning pour cet utilisateur
-        $entries = Planning::where('user_id', $userId)
+        $entries = Planning::where('user_id', $targetUserId)
+            ->with('demandeConge')
             ->get()
             ->map(function ($entry) {
                 return [
@@ -151,6 +174,8 @@ class PlanningController extends Controller
                     'end_time' => $entry->end_time ? $entry->end_time : null,
                     'start_time_afternoon' => $entry->start_time_afternoon ? $entry->start_time_afternoon : null,
                     'end_time_afternoon' => $entry->end_time_afternoon ? $entry->end_time_afternoon : null,
+                    'demande_conge_status' => $entry->demandeConge?->status,
+                    'demande_conge_type' => $entry->demandeConge?->type,
                 ];
             });
 
@@ -161,6 +186,9 @@ class PlanningController extends Controller
     {
         $credentials = $planningRequest->validated();
         $entry = Planning::findOrFail($id);
+
+        Gate::authorize('manage-planning', (int) $entry->user_id);
+
         $entry->update([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
@@ -174,12 +202,12 @@ class PlanningController extends Controller
         return response()->json(['message' => 'Modification réussie'], 200);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
-        $userId = auth()->id();
-        $entry = Planning::where('id', $id)
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        $entry = Planning::findOrFail($id);
+
+        Gate::authorize('manage-planning', (int) $entry->user_id);
+
         $entry->delete();
         return response()->json(['message' => 'Suppression réussie'], 200);
     }
