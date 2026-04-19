@@ -22,11 +22,22 @@
                 <i class="fa-duotone fa-calendar-days mr-3"></i> Crocheux
             </a>
         </div>
-        <!--
         <a href="{{ route('mes-conges.index') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
-            <i class="fa-sharp fa-solid fa-paperclip-vertical mr-3"></i> Mes congés
-        </a>-->
+            <i class="fa-duotone fa-solid fa-person-walking-luggage fa-lg"></i> Mes congés
+        </a>
+        <a href="{{ route('justificatif-absence.index') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
+            <i class="fa-duotone fa-solid fa-face-head-bandage fa-lg"></i> Justificatifs d'absence
+        </a>
         @if(Auth::user()->is_admin())
+            @php
+                $nbCongesEnAttente = \App\Models\DemandeConge::where('status', 'envoyee')->count();
+            @endphp
+            <a href="{{ route('admin.conges') }}" class="block py-1 px-2 rounded-box transition text-base-100 duration-200 flex items-center">
+                <i class="fa-duotone fa-clipboard-check mr-2"></i> Gestion des congés
+                @if($nbCongesEnAttente > 0)
+                    <span class="badge badge-sm badge-warning ml-auto">{{ $nbCongesEnAttente }}</span>
+                @endif
+            </a>
             <a href="{{ route('admin.user') }}" class="block py-1 px-2 rounded-box transition text-base-100 duration-200">
                 <i class="fa-duotone fa-user mr-2"></i> Utilisateurs
             </a>

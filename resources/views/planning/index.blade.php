@@ -10,7 +10,23 @@
         <h1 class="text-4xl font-medium">Mon planning</h1>
     </div>
 
-    <div x-data='calendar({{ auth()->id() }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon))' class="card-eg">
+    <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon))' class="card-eg">
+
+        {{-- Sélecteur d'utilisateur pour les admins --}}
+        @if(auth()->user()->is_admin() && $users->isNotEmpty())
+        <div class="flex items-center gap-3 mb-4 p-3 bg-base-200 rounded-box">
+            <i class="fa-duotone fa-user-gear text-primary"></i>
+            <label class="font-bold text-sm uppercase">Gérer le planning de :</label>
+            <select @change="switchUser($event.target.value)" class="select select-bordered" x-ref="userSelector">
+                @foreach($users as $user)
+                <option value="{{ $user->id }}" {{ $user->id == $targetUserId ? 'selected' : '' }}>
+                    {{ $user->firstname }} {{ $user->name }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
+
         <div class="flex justify-between mb-6 items-center">
             <button @click="decrementMonth" :disabled="isDecrementDisabled()" class="btn">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -24,6 +40,13 @@
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>
+
+        {{-- Indicateur copier/coller --}}
+        <div x-show="copiedData" x-transition class="flex items-center justify-between mb-4 p-2 bg-info/20 rounded-box text-sm">
+            <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour vide pour coller</span>
+            <button @click="cancelCopy()" class="btn btn-xs btn-ghost">Annuler</button>
+        </div>
+
         <div class="grid grid-cols-7 gap-4">
             @foreach($weekDays as $day)
             <div class="font-bold text-center border-b-2">
@@ -31,18 +54,16 @@
             </div>
             @endforeach
 
-            @for ($i = 1; $i <= 35; $i++) <div class="border aspect-square flex relative group" :class="{'bg-error': isDayFilled({{ $i }}).holiday, 'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}] && !isDayFilled({{ $i }}).holiday, 'bg-success': isDayFilled({{ $i }}).filled && !isDayFilled({{ $i }}).holiday}" @click="!isDayFilled({{ $i }}).holiday && openDayModal({{ $i }})">
+            @for ($i = 1; $i <= 35; $i++) <div class="border aspect-square flex relative group" :class="{
+                    'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}],
+                    'bg-success': isDayFilled({{ $i }}).filled,
+                    'ring-2 ring-info ring-offset-1': copiedDayIndex === {{ $i }}
+                }" @click="handleDayClick({{ $i }})">
                 @php
-                $weekNumber = intdiv($i + 6, 7); // Ajoutez 6 pour que le calcul commence correctement à la première semaine
+                $weekNumber = intdiv($i + 6, 7);
                 @endphp
                 <span x-text="daysInMonthArray[{{ $i - 1 }}]" class="text-[7px] xl:text-xs font-bold p-3 absolute top-0 left-0"></span>
                 @if ($i % 7===1) <button @click.stop="fillWeekAutomatically({{ $weekNumber }})" class="btn btn-xs text-[7px] xl:text-xs btn-ghost absolute top-2 right-2 z-10 opacity-25 hover:opacity-100 tooltip" data-tip="Remplir automatiquement">auto <i class="fa-duotone fa-arrow-right"></i></button>@endif
-                <template x-if="isDayFilled({{ $i }}).holiday">
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <p class="text-center font-bold">FÉRIÉ</p>
-                        <p class="text-xs text-center" x-text="isDayFilled({{ $i }}).holidayName"></p>
-                    </div>
-                </template>
 
                 <template x-if="isDayFilled({{ $i }}).filled">
                     <div class="absolute inset-0 flex flex-col items-center justify-center" :class="{
@@ -51,9 +72,16 @@
                         'bg-yellow-300/[0.9]': isDayFilled({{ $i }}).entry.status === 'conge',
                         'bg-red-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'indisponible',
                         'bg-purple-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'recup',
-                        'bg-orange-400/[0.8]': isDayFilled({{ $i }}).entry.status === 'css'
+                        'bg-orange-400/[0.8]': isDayFilled({{ $i }}).entry.status === 'css',
+                        'bg-pink-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'maladie'
                     }">
                         <p x-text="formatStatus(isDayFilled({{ $i }}).entry.status)" class="text-[10px] xl:text-base text-center font-bold"></p>
+
+                        {{-- Affichage du type de congé si lié à une demande acceptée --}}
+                        <template x-if="isDayFilled({{ $i }}).entry.demande_conge_type && isDayFilled({{ $i }}).entry.demande_conge_status === 'acceptee'">
+                            <p class="text-[8px] xl:text-xs text-center opacity-80 italic" x-text="congeTypeLabels[isDayFilled({{ $i }}).entry.demande_conge_type] || isDayFilled({{ $i }}).entry.demande_conge_type"></p>
+                        </template>
+
                         <p x-show="isDayFilled({{ $i }}).entry.status === 'tele_travail' || isDayFilled({{ $i }}).entry.status === 'bureau'" class="text-xs text-center">
                             <template x-if="isDayFilled({{ $i }}).entry.start_time && isDayFilled({{ $i }}).entry.end_time">
                                 <span class="text-[9px] xl:text-xs" x-text="formatTime(isDayFilled({{ $i }}).entry.start_time) + ' à ' + formatTime(isDayFilled({{ $i }}).entry.end_time)"></span>
@@ -68,7 +96,8 @@
 
                 <template x-if="isDayFilled({{ $i }}).filled">
                     <div class="absolute inset-0 flex flex-col items-center justify-center hidden group-hover:flex">
-                        <button class="btn btn-xs xl:btn-sm btn-primary my-1">Modifier</button>
+                        <button class="btn btn-xs xl:btn-sm btn-primary my-1" @click.stop="openDayModal({{ $i }})">Modifier</button>
+                        <button @click.stop="copyEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-secondary my-1"><i class="fa-duotone fa-copy mr-1"></i>Copier</button>
                         <button @click.stop="deleteEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-danger my-1">Supprimer</button>
                     </div>
                 </template>
@@ -95,6 +124,7 @@
                                 <option value="recup">Récupération</option>
                                 <option value="css">Congé sans solde (CSS)</option>
                                 <option value="indisponible">Indisponible</option>
+                                <option value="maladie">Maladie</option>
                             </select>
                         </div>
 
@@ -150,7 +180,18 @@
             planningEntries: userEntries,
             isEditing: false,
             entryIdToEdit: null,
+            originalStatus: null,
+            originalDemandeCongeStatus: null,
             afternoonEnabled: true,
+            congeTypeLabels: {
+                'recup': 'Récup.',
+                'conge': 'Congé (VA)',
+                'css': 'CSS',
+                'visite': 'Visite méd.',
+                'autre': 'Autre'
+            },
+            copiedData: null,
+            copiedDayIndex: null,
             dayData: {
                 status: 'bureau',
                 start_time: startTime,
@@ -172,26 +213,6 @@
                 '11': 'Novembre',
                 '12': 'Décembre'
             },
-            getHolidayName(date) {
-                const holidayNames = {
-                    '2024-01-01': 'Jour de l’an',
-                    '2024-04-01': 'Lundi de Pâques',
-                    '2024-05-01': 'Fête du travail',
-                    '2024-05-09': 'Ascension',
-                    '2024-05-20': 'Pentecôte',
-                    '2024-07-21': 'Fête nationale',
-                    '2024-08-15': 'L’Assomption',
-                    '2024-11-01': 'Toussaint',
-                    '2024-11-11': 'Fête de l’armistice',
-                    '2024-12-25': 'Noël',
-                };
-                if (date) {
-                    return holidayNames[date] || '';
-                } else {
-                    return holidayNames;
-                }
-            },
-
             init() {
                 this.populateMonthYearOptions();
                 this.updateCalendar();
@@ -215,6 +236,8 @@
                         return 'CONGÉ SS';
                     case 'indisponible':
                         return 'INDISPONIBLE';
+                    case 'maladie':
+                        return 'MALADIE';
                     default:
                         return status;
                 }
@@ -269,41 +292,116 @@
             isDayFilled(dayIndex) {
                 const selectedDay = this.daysInMonthArray[dayIndex - 1];
                 if (selectedDay === null || selectedDay === undefined) {
-                    return {
-                        filled: false,
-                        entryId: null,
-                        entry: {}
-                    };
+                    return { filled: false, entryId: null, entry: {} };
                 }
+                const [year, month] = this.selectedMonthYear.split('-').map(Number);
+                const date = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+                const entry = this.planningEntries.find(e => e.date === date);
+                return {
+                    filled: !!entry,
+                    entryId: entry ? entry.id : null,
+                    entry: entry || {}
+                };
+            },
 
-                try {
-                    const [year, month] = this.selectedMonthYear.split('-').map(Number);
-                    const date = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-                    const entry = this.planningEntries.find(entry => entry.date === date);
-
-                    if (this.getHolidayName(date)) {
-                        return {
-                            filled: false, // Assurez-vous que 'filled' est false pour les jours fériés
-                            entryId: null,
-                            entry: {},
-                            holiday: true,
-                            holidayName: this.getHolidayName(date)
-                        };
-                    }
-
-                    return {
-                        filled: !!entry,
-                        entryId: entry ? entry.id : null,
-                        entry: entry || {}
-                    };
-                } catch (e) {
-                    console.error('Erreur lors de la création de la date:', e);
-                    return {
-                        filled: false,
-                        entryId: null,
-                        entry: {}
-                    };
+            // Gestion du clic sur un jour : coller si copie active, sinon ouvrir le modal
+            handleDayClick(day) {
+                if (this.copiedData && !this.isDayFilled(day).filled && this.daysInMonthArray[day - 1]) {
+                    this.pasteEntry(day);
+                } else {
+                    this.openDayModal(day);
                 }
+            },
+
+            // Copier les données d'une tuile
+            copyEntry(dayIndex) {
+                const { entry } = this.isDayFilled(dayIndex);
+                if (!entry) return;
+
+                this.copiedData = {
+                    status: entry.status,
+                    start_time: entry.start_time ? entry.start_time.substr(0, 5) : null,
+                    end_time: entry.end_time ? entry.end_time.substr(0, 5) : null,
+                    start_time_afternoon: entry.start_time_afternoon ? entry.start_time_afternoon.substr(0, 5) : null,
+                    end_time_afternoon: entry.end_time_afternoon ? entry.end_time_afternoon.substr(0, 5) : null,
+                };
+                this.copiedDayIndex = dayIndex;
+
+                Swal.fire({
+                    title: 'Copié !',
+                    text: 'Cliquez sur un jour vide pour coller.',
+                    icon: 'info',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+            },
+
+            cancelCopy() {
+                this.copiedData = null;
+                this.copiedDayIndex = null;
+            },
+
+            // Coller les données copiées sur un autre jour
+            pasteEntry(dayIndex) {
+                if (!this.copiedData || !this.daysInMonthArray[dayIndex - 1]) return;
+
+                const selectedYear = this.selectedMonthYear.split('-')[0];
+                const selectedMonth = this.selectedMonthYear.split('-')[1];
+                const selectedDay = this.daysInMonthArray[dayIndex - 1].toString().padStart(2, '0');
+                const targetDate = `${selectedYear}-${selectedMonth}-${selectedDay}`;
+
+                let bodyData = {
+                    user_id: userId,
+                    date: targetDate,
+                    status: this.copiedData.status,
+                    start_time: this.copiedData.start_time,
+                    end_time: this.copiedData.end_time,
+                    start_time_afternoon: this.copiedData.start_time_afternoon,
+                    end_time_afternoon: this.copiedData.end_time_afternoon,
+                };
+
+                fetch('/mon-planning/store', {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(bodyData)
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Erreur');
+                    return response.json();
+                })
+                .then(data => {
+                    Swal.fire({
+                        title: 'Collé !',
+                        text: 'La tuile a été dupliquée avec succès.',
+                        icon: 'success',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                    });
+                    this.reloadPlanningEntries();
+                })
+                .catch(error => {
+                    console.error(error);
+                    Swal.fire({
+                        title: 'Erreur',
+                        text: 'Impossible de coller la tuile.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            },
+
+            // Changement d'utilisateur (admin)
+            switchUser(newUserId) {
+                window.location.href = `/mon-planning/?user_id=${newUserId}`;
             },
 
             openDayModal(day) {
@@ -320,34 +418,88 @@
                 this.entryIdToEdit = filled ? entryId : null;
 
                 if (filled) {
-                    // Charger les données de l'entrée existante
                     const entryToEdit = this.planningEntries.find(entry => entry.id === entryId);
                     if (entryToEdit) {
                         this.dayData.status = entryToEdit.status;
+                        this.originalStatus = entryToEdit.status;
+                        this.originalDemandeCongeStatus = entryToEdit.demande_conge_status ?? null;
                         this.dayData.start_time = entryToEdit.start_time ? entryToEdit.start_time.substr(0, 5) : startTime;
                         this.dayData.end_time = entryToEdit.end_time ? entryToEdit.end_time.substr(0, 5) : endTime;
                         this.dayData.start_time_afternoon = entryToEdit.start_time_afternoon ? entryToEdit.start_time_afternoon.substr(0, 5) : startTimeAfternoon;
                         this.dayData.end_time_afternoon = entryToEdit.end_time_afternoon ? entryToEdit.end_time_afternoon.substr(0, 5) : endTimeAfternoon;
                     }
                 } else {
-                    // Réinitialiser `dayData` pour une nouvelle entrée
+                    this.originalStatus = null;
+                    this.originalDemandeCongeStatus = null;
                     this.resetDayData();
                 }
 
                 this.afternoonEnabled = this.dayData.start_time_afternoon && this.dayData.end_time_afternoon;
                 this.selectedDay = day;
 
-                // Construction de la chaîne de date au format YYYY-MM-DD
                 const selectedYear = this.selectedMonthYear.split('-')[0];
                 const selectedMonth = this.selectedMonthYear.split('-')[1];
-                const selectedDay = this.daysInMonthArray[day - 1].toString().padStart(2, '0');
-                this.selectedDate = `${selectedYear}-${selectedMonth}-${selectedDay}`;
+                const selectedDayStr = this.daysInMonthArray[day - 1].toString().padStart(2, '0');
+                this.selectedDate = `${selectedYear}-${selectedMonth}-${selectedDayStr}`;
 
                 this.dayModalOpen = true;
-                console.log('Ouverture de la modal.');
             },
 
             submitDayForm() {
+                const congeStatuts = ['acceptee', 'envoyee'];
+                const congeTypes = ['conge', 'recup', 'css'];
+
+                const isMaladieChange = this.originalStatus === 'maladie' && this.dayData.status !== 'maladie';
+                const isCongeValideChange = congeTypes.includes(this.originalStatus)
+                    && this.dayData.status !== this.originalStatus
+                    && congeStatuts.includes(this.originalDemandeCongeStatus);
+
+                if (isMaladieChange) {
+                    Swal.fire({
+                        title: 'Attention',
+                        html: 'Ce jour est couvert par un <strong>certificat médical</strong>.<br>Êtes-vous sûr de vouloir changer le statut ?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Oui, modifier quand même',
+                        cancelButtonText: 'Annuler',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-error',
+                            cancelButton: 'btn btn-neutral ml-3',
+                        },
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.sendDayForm();
+                        }
+                    });
+                    return;
+                }
+
+                if (isCongeValideChange) {
+                    Swal.fire({
+                        title: 'Attention',
+                        html: 'Ce jour fait partie d\'un <strong>congé validé</strong>.<br>Êtes-vous sûr de vouloir changer le statut ?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Oui, modifier quand même',
+                        cancelButtonText: 'Annuler',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-error',
+                            cancelButton: 'btn btn-neutral ml-3',
+                        },
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.sendDayForm();
+                        }
+                    });
+                    return;
+                }
+
+                this.sendDayForm();
+            },
+
+            sendDayForm() {
                 const url = this.isEditing ? `/mon-planning/update/${this.entryIdToEdit}` : '/mon-planning/store';
 
                 let bodyData = {
@@ -391,7 +543,7 @@
                             toast: true,
                             position: 'top-end',
                             showConfirmButton: false,
-                            timer: 3000, // Le toast disparaît après 3000 millisecondes (3 secondes)
+                            timer: 3000,
                             timerProgressBar: true,
                             didOpen: (toast) => {
                                 toast.addEventListener('mouseenter', Swal.stopTimer)
@@ -413,9 +565,8 @@
             },
 
             reloadPlanningEntries() {
-                fetch('/mon-planning/show/')
+                fetch(`/mon-planning/show/?user_id=${userId}`)
                     .then(response => {
-                        console.log('Response:', response);
                         if (!response.ok) {
                             Swal.fire({
                                 title: 'Erreur',
@@ -428,7 +579,7 @@
                     })
                     .then(data => {
                         this.planningEntries = data.entries;
-                        this.updateCalendar(); // Mettre à jour le calendrier avec les nouvelles données
+                        this.updateCalendar();
                     })
                     .catch(error => {
                         console.log('Erreur lors du chargement des entrées : ', error);
@@ -464,7 +615,7 @@
                                     toast: true,
                                     position: 'top-end',
                                     showConfirmButton: false,
-                                    timer: 3000, // Le toast disparaît après 3000 millisecondes (3 secondes)
+                                    timer: 3000,
                                     timerProgressBar: true,
                                     didOpen: (toast) => {
                                         toast.addEventListener('mouseenter', Swal.stopTimer)
@@ -489,7 +640,6 @@
 
             fillWeekAutomatically(weekNumber) {
                 const [year, month] = this.selectedMonthYear.split('-').map(Number);
-                const holidays = Object.keys(this.getHolidayName());
 
                 fetch(`/mon-planning/fill-week/${year}/${month}/${weekNumber}`, {
                         method: "POST",
@@ -498,7 +648,8 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
-                            holidays
+                            holidays: [],
+                            user_id: userId
                         })
                     })
                     .then(response => {
