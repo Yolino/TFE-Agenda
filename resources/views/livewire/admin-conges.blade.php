@@ -81,58 +81,18 @@
             @if($selectedConge === $demande->id)
             <tr>
                 <td colspan="7">
-                    <div class="bg-base-200 rounded-box p-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Employé</p>
-                                <p>{{ $demande->user->firstname }} {{ $demande->user->name }}</p>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Type de congé</p>
-                                <p>{{ $types[$demande->type] }}</p>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Période</p>
-                                <p>Du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</p>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Nombre de jours</p>
-                                <p>
-                                    {{ $formatJours($demande->nb_jours) }}
-                                    @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
-                                        <span class="badge badge-xs badge-outline ml-1">demi-journée</span>
-                                    @endif
-                                </p>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Date de la demande</p>
-                                <p>{{ \Carbon\Carbon::parse($demande->created_at)->translatedFormat('d M Y à H:i') }}</p>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sm uppercase mb-1">Statut</p>
-                                <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
-                            </div>
-                            @if(in_array($demande->status, ['acceptee', 'refusee']) && $demande->decidedBy)
-                            <div class="col-span-2">
-                                <p class="font-bold text-sm uppercase mb-1">Décision</p>
-                                <x-conge-decision :conge="$demande" />
-                            </div>
-                            @endif
-                        </div>
-                        <div class="flex justify-end mt-4 gap-2">
-                            <a href="/mes-conges/pdf/{{ $demande->id }}" target="_blank" class="btn btn-sm btn-secondary">
-                                <i class="fa-duotone fa-file-pdf mr-1"></i> Voir le PDF
-                            </a>
-                            @if($demande->status === 'envoyee')
+                    <x-conge-details :conge="$demande">
+                        @if($demande->status === 'envoyee')
+                            <x-slot:actions>
                                 <button wire:click="accepter({{ $demande->id }})" class="btn btn-sm btn-success">
                                     <i class="fa-duotone fa-check mr-1"></i> Accepter
                                 </button>
                                 <button wire:click="refuser({{ $demande->id }})" class="btn btn-sm btn-error">
                                     <i class="fa-duotone fa-xmark mr-1"></i> Refuser
                                 </button>
-                            @endif
-                        </div>
-                    </div>
+                            </x-slot:actions>
+                        @endif
+                    </x-conge-details>
                 </td>
             </tr>
             @endif

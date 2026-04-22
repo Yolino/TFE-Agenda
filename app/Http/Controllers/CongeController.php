@@ -30,7 +30,7 @@ class CongeController extends Controller
             $c->formattedEndDate   = Carbon::parse($c->end_date)->translatedFormat('d M Y');
         });
 
-        $conges = DemandeConge::with('decidedBy')
+        $conges = DemandeConge::with(['decidedBy', 'user'])
             ->where('user_id', $user->id)
             ->where('end_date', '>=', $today)
             ->orderBy('start_date')
@@ -46,7 +46,7 @@ class CongeController extends Controller
 
         $selectedYear = $request->query('year', (string) $today->year);
 
-        $historiqueQuery = DemandeConge::with('decidedBy')
+        $historiqueQuery = DemandeConge::with(['decidedBy', 'user'])
             ->where('user_id', $user->id)
             ->where('end_date', '<', $today);
 

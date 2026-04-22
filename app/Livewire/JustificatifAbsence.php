@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\JustificatifAbsence as JustificatifAbsenceModel;
 use App\Models\Planning;
+use App\Services\FileCompressionService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
@@ -22,7 +23,17 @@ class JustificatifAbsence extends Component
         return [
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'certificat_medical' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'certificat_medical' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:5120',
+                function ($attribute, $value, $fail) {
+                    if (strtolower($value->getClientOriginalExtension()) === 'pdf' && $value->getSize() > 2 * 1024 * 1024) {
+                        $fail('Le certificat PDF ne doit pas dépasser 2 Mo. Compressez-le ou convertissez-le en image.');
+                    }
+                },
+            ],
         ];
     }
 
@@ -41,11 +52,11 @@ class JustificatifAbsence extends Component
         ];
     }
 
-    public function submit()
+    public function submit(FileCompressionService $compressor)
     {
         $this->validate();
 
-        $path = $this->certificat_medical->store('certificats', 'public');
+        $path = $compressor->storeAndCompress($this->certificat_medical, 'certificats', 'public');
 
         $startDate = Carbon::parse($this->start_date);
         $endDate = Carbon::parse($this->end_date);

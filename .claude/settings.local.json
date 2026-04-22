@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php -m)",
+      "Bash(php -l app/Services/FileCompressionService.php)",
+      "Bash(php -l app/Services/PlanningLockService.php)",
+      "Bash(php -l app/Livewire/JustificatifAbsence.php)",
+      "Bash(php -l app/Http/Controllers/PlanningController.php)",
+      "Bash(php -l app/Http/Controllers/CongeController.php)"
+    ]
+  }
+}
