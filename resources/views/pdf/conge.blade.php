@@ -67,8 +67,8 @@
 <body>
     <img class="background-image" src="images/conge.png" alt="Canevas">
     <div class="identite">
-        <span style="margin-left: 15rem;">{{ auth()->user()->firstname }}</span>
-        <span class="name">{{ auth()->user()->name }}</span>
+        <span style="margin-left: 15rem;">{{ $conge->user->firstname }}</span>
+        <span class="name">{{ $conge->user->name }}</span>
     </div>
     <div class="date">
         <span style="margin-left: 9.3rem;">{{ $conge->dateDu['jour'] }}</span>

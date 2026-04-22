@@ -21,7 +21,11 @@ class AdminConges extends Component
     public function accepter($id)
     {
         $conge = DemandeConge::where('id', $id)->where('status', 'envoyee')->firstOrFail();
-        $conge->update(['status' => 'acceptee']);
+        $conge->update([
+            'status' => 'acceptee',
+            'decided_by' => auth()->id(),
+            'decided_at' => now(),
+        ]);
 
         // Mettre à jour le planning avec le type de congé correspondant
         $statusMap = [
@@ -65,7 +69,11 @@ class AdminConges extends Component
     public function refuser($id)
     {
         $conge = DemandeConge::where('id', $id)->where('status', 'envoyee')->firstOrFail();
-        $conge->update(['status' => 'refusee']);
+        $conge->update([
+            'status' => 'refusee',
+            'decided_by' => auth()->id(),
+            'decided_at' => now(),
+        ]);
 
         $this->selectedConge = null;
 
@@ -76,7 +84,7 @@ class AdminConges extends Component
     {
         Carbon::setLocale('fr');
 
-        $query = DemandeConge::with('user')->orderBy('created_at', 'desc');
+        $query = DemandeConge::with(['user', 'decidedBy'])->orderBy('created_at', 'desc');
 
         if ($this->filter !== 'toutes') {
             $query->where('status', $this->filter);

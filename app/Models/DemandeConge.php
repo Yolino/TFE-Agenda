@@ -12,7 +12,11 @@ class DemandeConge extends Model
 
     protected $table = 'demande_conge';
 
-    protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status'];
+    protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status', 'decided_by', 'decided_at'];
+
+    protected $casts = [
+        'decided_at' => 'datetime',
+    ];
 
     /**
      * Relation vers l'utilisateur associé.
@@ -22,5 +26,10 @@ class DemandeConge extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function decidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'decided_by');
     }
 }

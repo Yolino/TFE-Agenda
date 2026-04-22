@@ -54,6 +54,7 @@
                 <td>{{ $demande->nb_jours . ($demande->nb_jours > 1 ? " jours" : " jour") }}</td>
                 <td>
                     <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
+                    <div class="mt-1"><x-conge-decision :conge="$demande" /></div>
                 </td>
                 <td>
                     @if($demande->status === 'envoyee')
@@ -95,6 +96,12 @@
                                 <p class="font-bold text-sm uppercase mb-1">Statut</p>
                                 <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
                             </div>
+                            @if(in_array($demande->status, ['acceptee', 'refusee']) && $demande->decidedBy)
+                            <div class="col-span-2">
+                                <p class="font-bold text-sm uppercase mb-1">Décision</p>
+                                <x-conge-decision :conge="$demande" />
+                            </div>
+                            @endif
                         </div>
                         <div class="flex justify-end mt-4 gap-2">
                             <a href="/mes-conges/pdf/{{ $demande->id }}" target="_blank" class="btn btn-sm btn-secondary">

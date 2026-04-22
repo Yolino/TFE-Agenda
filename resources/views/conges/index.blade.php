@@ -97,6 +97,7 @@
                             <td>{{ $conge->nb_jours . ($conge->nb_jours > 1 ? " jours" : " jour") }}</td>
                             <td>
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
+                                <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
                             </td>
                             <td>
                                 @if($conge->status === 'en_cours')
@@ -194,6 +195,7 @@
                             <td>{{ $conge->nb_jours . ($conge->nb_jours > 1 ? " jours" : " jour") }}</td>
                             <td>
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
+                                <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
                             </td>
                         </tr>
                         @empty

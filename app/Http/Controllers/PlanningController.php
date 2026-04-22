@@ -117,6 +117,12 @@ class PlanningController extends Controller
         $endDate = clone $startDate;
         $endDate->endOfWeek(Carbon::SUNDAY);
 
+        // Statuts protégés : l'auto ne les écrase jamais
+        $protectedStatuses = ['maladie', 'conge', 'recup', 'css', 'indisponible', 'jour_ferie'];
+        $protectedStatusIds = array_filter(
+            array_map(fn($s) => Planning::STATUS_MAP[$s] ?? null, $protectedStatuses)
+        );
+
         while ($startDate->lte($endDate)) {
             if (in_array($startDate->format('Y-m-d'), $holidays)) {
                 $startDate->addDay();
@@ -136,17 +142,27 @@ class PlanningController extends Controller
                 continue;
             }
 
+            // Ne pas écraser un jour déjà rempli avec un statut protégé
+            $existing = Planning::where('user_id', $targetUserId)
+                ->where('date', $startDate->format('Y-m-d'))
+                ->first();
+
+            if ($existing && in_array($existing->status_id, $protectedStatusIds)) {
+                $startDate->addDay();
+                continue;
+            }
+
             Planning::updateOrCreate(
                 [
                     'user_id' => $targetUserId,
-                    'date' => $startDate->format('Y-m-d')
+                    'date'    => $startDate->format('Y-m-d'),
                 ],
                 [
-                    'status_id' => $template->status_id,
-                    'start_time_morning' => $template->start_time_morning,
-                    'end_time_morning' => $template->end_time_morning,
+                    'status_id'            => $template->status_id,
+                    'start_time_morning'   => $template->start_time_morning,
+                    'end_time_morning'     => $template->end_time_morning,
                     'start_time_afternoon' => $template->start_time_afternoon,
-                    'end_time_afternoon' => $template->end_time_afternoon,
+                    'end_time_afternoon'   => $template->end_time_afternoon,
                 ]
             );
 

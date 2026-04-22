@@ -24,7 +24,8 @@ class CongeController extends Controller
             $c->formattedEndDate   = Carbon::parse($c->end_date)->translatedFormat('d M Y');
         });
 
-        $conges = DemandeConge::where('user_id', auth()->id())
+        $conges = DemandeConge::with('decidedBy')
+            ->where('user_id', auth()->id())
             ->where('end_date', '>=', $today)
             ->orderBy('start_date')
             ->get()
@@ -40,7 +41,8 @@ class CongeController extends Controller
 
         $selectedYear = $request->query('year', (string) $today->year);
 
-        $historiqueQuery = DemandeConge::where('user_id', auth()->id())
+        $historiqueQuery = DemandeConge::with('decidedBy')
+            ->where('user_id', auth()->id())
             ->where('end_date', '<', $today);
 
         if ($selectedYear !== 'all') {
@@ -66,7 +68,7 @@ class CongeController extends Controller
 
     public function generatePDF($id)
     {
-        $conge = DemandeConge::findOrFail($id);
+        $conge = DemandeConge::with('user')->findOrFail($id);
 
         // Formatage des dates
         $conge->formattedStartDate = Carbon::parse($conge->start_date)->translatedFormat('d M Y');

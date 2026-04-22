@@ -21,6 +21,7 @@ class Planning extends Model
         'indisponible' => 6,
         'neant' => 7,
         'maladie' => 8,
+        'jour_ferie' => 9,
     ];
 
     protected $fillable = [
