@@ -1,33 +1,70 @@
 @extends("app")
-@section("title", "Login - Agenda")
+@section("title", "Connexion - Agenda")
 
 @section("content")
-<section class="bg-base-100">
-    <div class="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-        <div class="flex items-center mb-6">
-            <img class="w-[280px] mb-5" src="/images/logo.png" alt="logo">
-        </div>
-        <div class="w-full shadow dark:border md:mt-0 sm:max-w-md xl:p-0 bg-secondary">
-            <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
-                <form action="{{ route('auth.index') }}" method="post" class="">
+<section class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="card bg-base-100 shadow-2xl border border-base-300">
+            <div class="card-body p-8 sm:p-10">
+                <div class="flex flex-col items-center mb-6">
+                    <img class="w-48 mb-4" src="{{ asset('images/logo_b.png') }}?v=20260422" alt="Agenda">
+                    <h1 class="text-2xl font-bold text-base-content">Bienvenue</h1>
+                    <p class="text-sm text-base-content/60 mt-1">Connectez-vous à votre espace Agenda</p>
+                </div>
+
+                @error('errorsCredentials')
+                <div role="alert" class="alert alert-error mb-4 text-sm">
+                    <i class="fa-duotone fa-circle-exclamation"></i>
+                    <span>{{ $message }}</span>
+                </div>
+                @enderror
+
+                <form action="{{ route('auth.index') }}" method="post" class="space-y-4">
                     @csrf
-                    <div class="mb-5">
-                        <label for="email" class="block mb-2 text-sm font-medium text-white dark:text-white">Email</label>
-                        <input type="email" name="email" id="email" class="bg-gray-50 border border-gray-300 sm:text-sm focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="" required="" value="{{ old('email') }}">
+
+                    <label class="form-control w-full">
+                        <div class="label">
+                            <span class="label-text font-semibold uppercase text-xs tracking-wide">Email</span>
+                        </div>
+                        <label class="input input-bordered flex items-center gap-3 focus-within:input-primary">
+                            <i class="fa-duotone fa-envelope text-base-content/50"></i>
+                            <input type="email" name="email" placeholder="nom@exemple.com"
+                                   class="grow" required autofocus value="{{ old('email') }}">
+                        </label>
+                    </label>
+
+                    <label class="form-control w-full" x-data="{ show: false }">
+                        <div class="label">
+                            <span class="label-text font-semibold uppercase text-xs tracking-wide">Mot de passe</span>
+                        </div>
+                        <label class="input input-bordered flex items-center gap-3 focus-within:input-primary">
+                            <i class="fa-duotone fa-lock text-base-content/50"></i>
+                            <input :type="show ? 'text' : 'password'" name="password" placeholder="••••••••"
+                                   class="grow" required>
+                            <button type="button" @click="show = !show" tabindex="-1"
+                                    class="text-base-content/50 hover:text-base-content transition">
+                                <i class="fa-duotone" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                            </button>
+                        </label>
+                    </label>
+
+                    <div class="flex justify-end">
+                        <a href="{{ route('password.request') }}" class="link link-hover text-xs text-base-content/70">
+                            Mot de passe oublié ?
+                        </a>
                     </div>
-                    <div class="mb-5">
-                        <label for="password" class="block mb-2 text-sm font-medium text-white dark:text-white">Mot de passe</label>
-                        <input type="password" name="password" id="password" placeholder="" class="bg-gray-50 border border-gray-300 sm:text-sm focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required="">
-                    </div>
-                    @error('errorsCredentials')
-                    <div class="bg-red-100 text-red-700 text-center font-bold p-5 w-full mb-5 rounded-md">
-                        {{ $message }}
-                    </div>
-                    @enderror
-                    <button type="submit" class="w-full btn btn-primary text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">SE CONNECTER</button>
+
+                    <button type="submit" class="btn btn-primary w-full text-base font-semibold">
+                        <i class="fa-duotone fa-arrow-right-to-bracket"></i>
+                        Se connecter
+                    </button>
                 </form>
             </div>
         </div>
+
+        <p class="text-center text-xs text-base-content/50 mt-6">
+            &copy; {{ date('Y') }} Agenda — Tous droits réservés
+        </p>
     </div>
 </section>
 @endsection

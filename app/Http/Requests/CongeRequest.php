@@ -23,10 +23,18 @@ class CongeRequest extends FormRequest
     {
         return [
             'type' => 'required|string',
-            'nb_jours' => 'required|integer',
+            'nb_jours' => 'nullable|numeric',
+            'is_half_day' => 'nullable|boolean',
             'start_date' => 'required|date',
-            'end_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'is_half_day' => filter_var($this->input('is_half_day'), FILTER_VALIDATE_BOOLEAN),
+        ]);
     }
 
     /**
@@ -39,12 +47,12 @@ class CongeRequest extends FormRequest
         return [
             'type.required' => 'Le type de congé est requis.',
             'type.string' => 'Le type de congé doit être une chaîne de caractères.',
-            'nb_jours.required' => 'Le nombre de jours est requis.',
-            'nb_jours.integer' => 'Le nombre de jours doit être un entier.',
+            'nb_jours.numeric' => 'Le nombre de jours doit être numérique.',
             'start_date.required' => 'La date de début est requise.',
             'start_date.date' => 'La date de début doit être une date.',
             'end_date.required' => 'La date de fin est requise.',
             'end_date.date' => 'La date de fin doit être une date.',
+            'end_date.after_or_equal' => 'La date de fin doit être postérieure ou égale à la date de début.',
         ];
     }
 }

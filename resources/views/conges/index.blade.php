@@ -5,8 +5,11 @@
 @include("partials.nav")
 <div class="p-4">
     @include('partials.flash')
-    <div class="card-eg">
+    <div class="card-eg flex items-center justify-between gap-4 flex-wrap">
         <h1 class="text-4xl font-medium">Mes congés</h1>
+        <div class="min-w-[18rem]">
+            <x-leave-balance :balance="$balance" compact />
+        </div>
     </div>
     @php
     $types = [
@@ -22,6 +25,12 @@
         'acceptee' => ['label' => 'Acceptée',  'class' => 'badge-success'],
         'refusee'  => ['label' => 'Refusée',   'class' => 'badge-error'],
     ];
+
+    $formatJours = function ($n) {
+        $n = (float) $n;
+        $clean = rtrim(rtrim(number_format($n, 1, ',', ' '), '0'), ',');
+        return $clean . ' ' . ($n > 1 ? 'jours' : 'jour');
+    };
     @endphp
     @php
         $ongletInitial = request()->has('year') ? 'historique' : 'demandes';
@@ -94,7 +103,12 @@
                             </th>
                             <td class="font-bold">{{ $types[$conge->type] }}</td>
                             <td>du {{ $conge->formattedStartDate }} au {{ $conge->formattedEndDate }}</td>
-                            <td>{{ $conge->nb_jours . ($conge->nb_jours > 1 ? " jours" : " jour") }}</td>
+                            <td>
+                                {{ $formatJours($conge->nb_jours) }}
+                                @if(fmod((float) $conge->nb_jours, 1) !== 0.0)
+                                    <span class="badge badge-xs badge-outline ml-1">½ journée</span>
+                                @endif
+                            </td>
                             <td>
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
@@ -105,7 +119,8 @@
                                         data-conge-id="{{ $conge->id }}"
                                         data-conge-type="{{ $conge->type }}"
                                         data-conge-start="{{ $conge->start_date }}"
-                                        data-conge-end="{{ $conge->end_date }}">
+                                        data-conge-end="{{ $conge->end_date }}"
+                                        data-conge-half="{{ fmod((float) $conge->nb_jours, 1) !== 0.0 ? '1' : '0' }}">
                                         <i class="fa-duotone fa-pen"></i>
                                     </button>
                                     <a href="{{ route('mes-conges.send', ['id' => $conge->id]) }}" class="send-conge-link" data-send-url="{{ route('mes-conges.send', ['id' => $conge->id]) }}">
@@ -175,7 +190,12 @@
                                 </th>
                                 <td class="font-bold">{{ $types[$conge->type] }}</td>
                                 <td>du {{ $conge->formattedStartDate }} au {{ $conge->formattedEndDate }}</td>
-                                <td>{{ $conge->nb_jours . ($conge->nb_jours > 1 ? " jours" : " jour") }}</td>
+                                <td>
+                                {{ $formatJours($conge->nb_jours) }}
+                                @if(fmod((float) $conge->nb_jours, 1) !== 0.0)
+                                    <span class="badge badge-xs badge-outline ml-1">½ journée</span>
+                                @endif
+                            </td>
                                 <td>
                                     <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 </td>
@@ -192,7 +212,12 @@
                             </th>
                             <td class="font-bold">{{ $types[$conge->type] }}</td>
                             <td>du {{ $conge->formattedStartDate }} au {{ $conge->formattedEndDate }}</td>
-                            <td>{{ $conge->nb_jours . ($conge->nb_jours > 1 ? " jours" : " jour") }}</td>
+                            <td>
+                                {{ $formatJours($conge->nb_jours) }}
+                                @if(fmod((float) $conge->nb_jours, 1) !== 0.0)
+                                    <span class="badge badge-xs badge-outline ml-1">½ journée</span>
+                                @endif
+                            </td>
                             <td>
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
@@ -210,7 +235,7 @@
             </div>
         </div>
         <div class="basis-1/4">
-            <form action="" method="post">
+            <form action="" method="post" x-data="{ sameDay: false, halfDay: false }">
                 @method('POST')
                 @csrf
                 <div class="flex flex-col gap-5">
@@ -225,20 +250,23 @@
                             <option value="autre">Autre</option>
                         </select>
                     </div>
-                    <!-- Nombre de jours -->
-                    <div class="flex flex-col hidden">
-                        <label for="nb_jours" class="uppercase text-sm font-bold mb-2">Nombre de jours</label>
-                        <input type="number" placeholder="" id="nb_jours" class="input w-full" name="nb_jours" required />
-                    </div>
                     <!-- Date de début -->
                     <div class="flex flex-col">
                         <label for="start_date" class="uppercase text-sm font-bold mb-2">Date de début</label>
-                        <input type="date" placeholder="" id="start_date" class="input w-full" name="start_date" required />
+                        <input type="date" id="start_date" class="input w-full" name="start_date" required
+                               @change="sameDay = $event.target.value && $event.target.value === document.getElementById('end_date').value; if (!sameDay) halfDay = false;" />
                     </div>
                     <!-- Date de fin -->
                     <div class="flex flex-col">
                         <label for="end_date" class="uppercase text-sm font-bold mb-2">Date de fin</label>
-                        <input type="date" placeholder="" id="end_date" class="input w-full" name="end_date" required />
+                        <input type="date" id="end_date" class="input w-full" name="end_date" required
+                               @change="sameDay = $event.target.value && $event.target.value === document.getElementById('start_date').value; if (!sameDay) halfDay = false;" />
+                    </div>
+                    <!-- Demi-journée -->
+                    <div class="flex items-center justify-between gap-2" x-show="sameDay" x-transition>
+                        <label for="is_half_day" class="uppercase text-sm font-bold">Demi-journée</label>
+                        <input type="hidden" name="is_half_day" :value="halfDay ? 1 : 0">
+                        <input type="checkbox" id="is_half_day" class="toggle toggle-primary" x-model="halfDay">
                     </div>
                     <!-- Bouton de soumission -->
                     <div class="flex flex-col">
@@ -268,7 +296,6 @@
                         <option value="autre">Autre</option>
                     </select>
                 </div>
-                <input type="hidden" id="edit_nb_jours" name="nb_jours" />
                 <div class="flex flex-col">
                     <label for="edit_start_date" class="uppercase text-sm font-bold mb-2">Date de début</label>
                     <input type="date" id="edit_start_date" class="input w-full" name="start_date" required />
@@ -276,6 +303,11 @@
                 <div class="flex flex-col">
                     <label for="edit_end_date" class="uppercase text-sm font-bold mb-2">Date de fin</label>
                     <input type="date" id="edit_end_date" class="input w-full" name="end_date" required />
+                </div>
+                <div id="edit_half_day_wrapper" class="flex items-center justify-between gap-2 hidden">
+                    <label for="edit_is_half_day" class="uppercase text-sm font-bold">Demi-journée</label>
+                    <input type="hidden" id="edit_is_half_day_value" name="is_half_day" value="0">
+                    <input type="checkbox" id="edit_is_half_day" class="toggle toggle-primary">
                 </div>
             </div>
             <div class="modal-action">
@@ -291,44 +323,52 @@
 @push("scripts")
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Calcul automatique du nombre de jours (formulaire de création)
+        function validateDateOrder(startEl, endEl) {
+            if (!startEl.value || !endEl.value) return true;
+            if (new Date(startEl.value) > new Date(endEl.value)) {
+                Swal.fire({
+                    title: 'Erreur',
+                    text: 'La date de début ne peut pas être postérieure à la date de fin.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                endEl.value = '';
+                return false;
+            }
+            return true;
+        }
+
         const startDateInput = document.getElementById('start_date');
         const endDateInput = document.getElementById('end_date');
-        const nbJoursInput = document.getElementById('nb_jours');
+        startDateInput.addEventListener('change', () => validateDateOrder(startDateInput, endDateInput));
+        endDateInput.addEventListener('change', () => validateDateOrder(startDateInput, endDateInput));
 
-        function updateNbJours(startEl, endEl, nbJoursEl) {
-            const startDate = new Date(startEl.value);
-            const endDate = new Date(endEl.value);
+        // Gestion du formulaire de modification
+        const editStartDate = document.getElementById('edit_start_date');
+        const editEndDate = document.getElementById('edit_end_date');
+        const editHalfDayWrapper = document.getElementById('edit_half_day_wrapper');
+        const editHalfDayToggle = document.getElementById('edit_is_half_day');
+        const editHalfDayValue = document.getElementById('edit_is_half_day_value');
 
-            if (startEl.value && endEl.value) {
-                if (startDate > endDate) {
-                    Swal.fire({
-                        title: 'Erreur',
-                        text: 'La date de début ne peut pas être postérieure à la date de fin.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                    nbJoursEl.value = '';
-                    endEl.value = '';
-                    return;
-                }
-
-                const diffTime = Math.abs(endDate - startDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                nbJoursEl.value = diffDays;
+        function syncEditHalfDayVisibility() {
+            const isSameDay = editStartDate.value && editStartDate.value === editEndDate.value;
+            editHalfDayWrapper.classList.toggle('hidden', !isSameDay);
+            if (!isSameDay) {
+                editHalfDayToggle.checked = false;
+                editHalfDayValue.value = '0';
             }
         }
 
-        startDateInput.addEventListener('change', () => updateNbJours(startDateInput, endDateInput, nbJoursInput));
-        endDateInput.addEventListener('change', () => updateNbJours(startDateInput, endDateInput, nbJoursInput));
+        editHalfDayToggle.addEventListener('change', () => {
+            editHalfDayValue.value = editHalfDayToggle.checked ? '1' : '0';
+        });
 
-        // Calcul automatique du nombre de jours (formulaire de modification)
-        const editStartDate = document.getElementById('edit_start_date');
-        const editEndDate = document.getElementById('edit_end_date');
-        const editNbJours = document.getElementById('edit_nb_jours');
-
-        editStartDate.addEventListener('change', () => updateNbJours(editStartDate, editEndDate, editNbJours));
-        editEndDate.addEventListener('change', () => updateNbJours(editStartDate, editEndDate, editNbJours));
+        editStartDate.addEventListener('change', () => {
+            if (validateDateOrder(editStartDate, editEndDate)) syncEditHalfDayVisibility();
+        });
+        editEndDate.addEventListener('change', () => {
+            if (validateDateOrder(editStartDate, editEndDate)) syncEditHalfDayVisibility();
+        });
 
         // Ouverture du modal de modification
         document.querySelectorAll('.update-conge').forEach(button => {
@@ -337,14 +377,15 @@
                 const congeType = this.getAttribute('data-conge-type');
                 const congeStart = this.getAttribute('data-conge-start');
                 const congeEnd = this.getAttribute('data-conge-end');
+                const congeHalf = this.getAttribute('data-conge-half') === '1';
 
                 document.getElementById('editForm').action = '/mes-conges/update/' + congeId;
                 document.getElementById('edit_type').value = congeType;
-                document.getElementById('edit_start_date').value = congeStart;
-                document.getElementById('edit_end_date').value = congeEnd;
-
-                // Calculer nb_jours
-                updateNbJours(editStartDate, editEndDate, editNbJours);
+                editStartDate.value = congeStart;
+                editEndDate.value = congeEnd;
+                editHalfDayToggle.checked = congeHalf;
+                editHalfDayValue.value = congeHalf ? '1' : '0';
+                syncEditHalfDayVisibility();
 
                 document.getElementById('editModal').showModal();
             });

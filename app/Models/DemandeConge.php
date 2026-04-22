@@ -16,6 +16,7 @@ class DemandeConge extends Model
 
     protected $casts = [
         'decided_at' => 'datetime',
+        'nb_jours' => 'float',
     ];
 
     /**

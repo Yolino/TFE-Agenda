@@ -41,9 +41,9 @@
             </button>
         </div>
 
-        {{-- Indicateur copier/coller --}}
+        {{-- Indicateur copier/coller (usage unique) --}}
         <div x-show="copiedData" x-transition class="flex items-center justify-between mb-4 p-2 bg-info/20 rounded-box text-sm">
-            <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour vide pour coller</span>
+            <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour vide pour coller (usage unique)</span>
             <button @click="cancelCopy()" class="btn btn-xs btn-ghost">Annuler</button>
         </div>
 
@@ -55,7 +55,8 @@
             @endforeach
 
             @for ($i = 1; $i <= 35; $i++) <div class="border aspect-square flex relative group" :class="{
-                    'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}],
+                    'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}),
+                    'cursor-not-allowed opacity-90': getHoliday({{ $i }}),
                     'bg-success': isDayFilled({{ $i }}).filled,
                     'ring-2 ring-info ring-offset-1': copiedDayIndex === {{ $i }}
                 }" @click="handleDayClick({{ $i }})">
@@ -347,6 +348,21 @@
 
             // Gestion du clic sur un jour : coller si copie active, sinon ouvrir le modal
             handleDayClick(day) {
+                // Bloquer toute interaction sur un jour férié
+                if (this.getHoliday(day)) {
+                    Swal.fire({
+                        title: 'Jour férié',
+                        text: 'Aucune action n\'est possible sur un jour férié.',
+                        icon: 'info',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                    });
+                    return;
+                }
+
                 if (this.copiedData && !this.isDayFilled(day).filled && this.daysInMonthArray[day - 1]) {
                     this.pasteEntry(day);
                 } else {
@@ -427,6 +443,8 @@
                         timer: 2000,
                         timerProgressBar: true,
                     });
+                    // Le presse-papier est à usage unique : réinitialiser après coller
+                    this.cancelCopy();
                     this.reloadPlanningEntries();
                 })
                 .catch(error => {
