@@ -5,8 +5,8 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\DemandeConge;
 use App\Models\Planning;
+use App\Services\LeaveBalanceService;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 
 class AdminConges extends Component
 {
@@ -18,9 +18,9 @@ class AdminConges extends Component
         $this->selectedConge = $this->selectedConge === $id ? null : $id;
     }
 
-    public function accepter($id)
+    public function accepter($id, LeaveBalanceService $leaveBalance)
     {
-        $conge = DemandeConge::where('id', $id)->where('status', 'envoyee')->firstOrFail();
+        $conge = DemandeConge::with('user')->where('id', $id)->where('status', 'envoyee')->firstOrFail();
         $conge->update([
             'status' => 'acceptee',
             'decided_by' => auth()->id(),
@@ -35,16 +35,13 @@ class AdminConges extends Component
         ];
         $planningStatus = $statusMap[$conge->type] ?? 'conge';
 
-        $period = CarbonPeriod::create(
+        $workingDates = $leaveBalance->workingDatesBetween(
+            $conge->user,
             Carbon::parse($conge->start_date),
             Carbon::parse($conge->end_date)
         );
 
-        foreach ($period as $date) {
-            if ($date->isWeekend()) {
-                continue;
-            }
-
+        foreach ($workingDates as $date) {
             Planning::updateOrCreate(
                 [
                     'user_id' => $conge->user_id,

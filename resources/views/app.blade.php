@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="@yield('meta_description', 'Agenda')">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}?v=20260422">
 
     <title>@yield("title")</title>
 

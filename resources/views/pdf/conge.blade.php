@@ -61,6 +61,41 @@
             margin-top: 2.2rem;
             display: inline-block;
         }
+
+        .decision {
+            clear: both;
+            display: block;
+            margin-top: 8rem;
+            margin-left: 2rem;
+            margin-right: 2rem;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            padding: 14px 20px;
+            border: 2px solid currentColor;
+            border-radius: 8px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .decision.approuvee {
+            color: #1a7f37;
+            background-color: #e6f4ea;
+        }
+
+        .decision.refusee {
+            color: #c53030;
+            background-color: #fde7e7;
+        }
+
+        .decision-date {
+            display: block;
+            font-size: 14px;
+            font-weight: normal;
+            color: #555;
+            margin-top: 4px;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -94,6 +129,23 @@
         </div>
     </div>
     @endforeach
+
+    @if(in_array($conge->status, ['acceptee', 'refusee']))
+        @php
+            $approuvee = $conge->status === 'acceptee';
+            $decideur = $conge->decidedBy
+                ? trim($conge->decidedBy->firstname . ' ' . $conge->decidedBy->name)
+                : 'Administrateur';
+        @endphp
+        <div class="decision {{ $approuvee ? 'approuvee' : 'refusee' }}">
+            {{ $approuvee ? 'Approuvé' : 'Refusé' }} par {{ $decideur }}
+            @if($conge->decided_at)
+                <span class="decision-date">
+                    le {{ \Carbon\Carbon::parse($conge->decided_at)->translatedFormat('d F Y à H\hi') }}
+                </span>
+            @endif
+        </div>
+    @endif
 </body>
 
 </html>

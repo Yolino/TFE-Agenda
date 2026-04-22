@@ -13,6 +13,12 @@
         'acceptee' => ['label' => 'Acceptée', 'class' => 'badge-success'],
         'refusee' => ['label' => 'Refusée', 'class' => 'badge-error'],
     ];
+
+    $formatJours = function ($n) {
+        $n = (float) $n;
+        $clean = rtrim(rtrim(number_format($n, 1, ',', ' '), '0'), ',');
+        return $clean . ' ' . ($n > 1 ? 'jours' : 'jour');
+    };
     @endphp
 
     <!-- Filtres -->
@@ -51,7 +57,12 @@
                 <td class="font-bold">{{ $demande->user->firstname }} {{ $demande->user->name }}</td>
                 <td>{{ $types[$demande->type] }}</td>
                 <td>du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</td>
-                <td>{{ $demande->nb_jours . ($demande->nb_jours > 1 ? " jours" : " jour") }}</td>
+                <td>
+                    {{ $formatJours($demande->nb_jours) }}
+                    @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
+                        <span class="badge badge-xs badge-outline ml-1">½</span>
+                    @endif
+                </td>
                 <td>
                     <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
                     <div class="mt-1"><x-conge-decision :conge="$demande" /></div>
@@ -86,7 +97,12 @@
                             </div>
                             <div>
                                 <p class="font-bold text-sm uppercase mb-1">Nombre de jours</p>
-                                <p>{{ $demande->nb_jours . ($demande->nb_jours > 1 ? " jours" : " jour") }}</p>
+                                <p>
+                                    {{ $formatJours($demande->nb_jours) }}
+                                    @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
+                                        <span class="badge badge-xs badge-outline ml-1">demi-journée</span>
+                                    @endif
+                                </p>
                             </div>
                             <div>
                                 <p class="font-bold text-sm uppercase mb-1">Date de la demande</p>
