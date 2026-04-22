@@ -15,19 +15,11 @@
             @php
                 $previousWeek = $selectedWeek - 1;
                 $nextWeek = $selectedWeek + 1;
-
                 $previousYear = $selectedYear;
                 $nextYear = $selectedYear;
 
-                if ($previousWeek < 1) {
-                    $previousWeek = 52;
-                    $previousYear--;
-                }
-
-                if ($nextWeek > 52) {
-                    $nextWeek = 1;
-                    $nextYear++;
-                }
+                if ($previousWeek < 1) { $previousWeek = 52; $previousYear--; }
+                if ($nextWeek > 52)    { $nextWeek = 1;      $nextYear++;     }
             @endphp
 
             <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
@@ -45,60 +37,66 @@
             </a>
         </div>
 
+        @php
+            $congeTypeLabels = [
+                'recup' => 'Récup.',
+                'conge' => 'Congé (VA)',
+                'css' => 'CSS',
+                'visite' => 'Visite méd.',
+                'autre' => 'Autre',
+            ];
+            $maxEntries = $planningEntries->groupBy('date')->map->count()->max();
+        @endphp
+
         <div class="grid grid-cols-6 gap-4">
+            {{-- En-têtes des jours --}}
             @foreach($daysInWeek as $day)
-            <div class="text-center font-bold bg-gray-100 p-2 border rounded">
+            @php $isHoliday = isset($holidays[$day->toDateString()]); @endphp
+            <div class="text-center font-bold p-2 border rounded {{ $isHoliday ? 'bg-teal-300 text-teal-900' : 'bg-gray-100' }}">
                 {{ $day->translatedFormat('l d/m') }}
+                @if($isHoliday)
+                    <p class="text-[10px] font-normal italic">{{ $holidays[$day->toDateString()] }}</p>
+                @endif
             </div>
             @endforeach
 
-            @php
-            $maxEntries = $planningEntries->groupBy('date')->map->count()->max();
-            @endphp
-
+            {{-- Entrées --}}
             @for ($i = 0; $i < $maxEntries; $i++)
                 @foreach($daysInWeek as $day)
                 @php
-                    $entries = $planningEntries->filter(function ($entry) use ($day) {
-                        return $entry->date === $day->toDateString();
-                    })->values();
+                    $dateStr  = $day->toDateString();
+                    $isHoliday = isset($holidays[$dateStr]);
+                    $entries  = $planningEntries->filter(fn($e) => $e->date === $dateStr)->values();
+                    $entry    = $entries[$i] ?? null;
 
-                    $entry = $entries[$i] ?? null;
+                    if ($entry === null) continue;
 
-                    if($entry == null) continue;
-
-                    $bgClasses = match ([$entry->user->type ?? null, $entry->status != 'bureau'] ) {
+                    $bgClasses = $isHoliday ? 'bg-teal-200 text-teal-900' : match([$entry->user->type ?? null, $entry->status != 'bureau']) {
                         ['I', false] => 'bg-orange-100',
-                        ['I', true] => 'bg-gray-400',
+                        ['I', true]  => 'bg-gray-400',
                         ['C', false] => 'bg-sky-200',
-                        ['C', true] => 'bg-gray-400',
+                        ['C', true]  => 'bg-gray-400',
                         ['B', false] => 'bg-lime-200',
-                        ['B', true] => 'bg-gray-400',
+                        ['B', true]  => 'bg-gray-400',
                         ['S', false] => 'bg-orange-400',
-                        ['S', true] => 'bg-gray-400',
-                        default => 'bg-white',
+                        ['S', true]  => 'bg-gray-400',
+                        default      => 'bg-white',
                     };
 
-                    $textColorClasses = match ([$entry->status ?? null]) {
-                        ['recup'] => 'text-red-700',
-                        ['indisponible'] => 'text-red-700',
-                        ['maladie'] => 'text-pink-700',
-                        ['tele_travail'] => 'text-green-700',
-                        default => 'text-gray-800',
+                    $textColorClasses = $isHoliday ? 'text-teal-900' : match([$entry->status ?? null]) {
+                        ['recup']       => 'text-red-700',
+                        ['indisponible']=> 'text-red-700',
+                        ['maladie']     => 'text-pink-700',
+                        ['tele_travail']=> 'text-green-700',
+                        default         => 'text-gray-800',
                     };
-                @endphp
-                @php
-                    $congeTypeLabels = [
-                        'recup' => 'Récup.',
-                        'conge' => 'Congé (VA)',
-                        'css' => 'CSS',
-                        'visite' => 'Visite méd.',
-                        'autre' => 'Autre',
-                    ];
                 @endphp
                 <div class="border p-2 rounded {{ $bgClasses }}">
-                    @if($entry)
-                        <p class="text-sm text-center font-medium {{ $textColorClasses }}">{{ $entry->user->name }} {{ $entry->user->firstname }}</p>
+                    <p class="text-sm text-center font-medium {{ $textColorClasses }}">{{ $entry->user->name }} {{ $entry->user->firstname }}</p>
+                    @if($isHoliday)
+                        <p class="font-bold text-center mt-2">JOUR FÉRIÉ</p>
+                        <p class="text-xs text-center italic mt-1">{{ $holidays[$dateStr] }}</p>
+                    @else
                         <p class="text-center mt-2">
                             <span class="font-semibold {{ $textColorClasses }}">
                                 {{ $entry->status === 'tele_travail' ? 'Domicile' : ucfirst($entry->status) }}

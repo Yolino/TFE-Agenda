@@ -29,6 +29,31 @@ class AdminController extends Controller
         return view('admin.users', compact('users'));
     }
 
+    private function belgianHolidays(int $year): array
+    {
+        $a = $year % 19; $b = intdiv($year, 100); $c = $year % 100;
+        $d = intdiv($b, 4); $e = $b % 4; $f = intdiv($b + 8, 25);
+        $g = intdiv($b - $f + 1, 3); $h = (19 * $a + $b - $d - $g + 15) % 30;
+        $i = intdiv($c, 4); $k = $c % 4; $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+        $m = intdiv($a + 11 * $h + 22 * $l, 451);
+        $month = intdiv($h + $l - 7 * $m + 114, 31);
+        $day   = (($h + $l - 7 * $m + 114) % 31) + 1;
+        $easter = Carbon::createFromDate($year, $month, $day);
+
+        return [
+            "$year-01-01" => 'Nouvel An',
+            $easter->copy()->addDay()->format('Y-m-d')    => 'Lundi de Pâques',
+            "$year-05-01" => 'Fête du Travail',
+            $easter->copy()->addDays(39)->format('Y-m-d') => 'Ascension',
+            $easter->copy()->addDays(50)->format('Y-m-d') => 'Lundi de Pentecôte',
+            "$year-07-21" => 'Fête nationale',
+            "$year-08-15" => 'Assomption',
+            "$year-11-01" => 'Toussaint',
+            "$year-11-11" => 'Armistice',
+            "$year-12-25" => 'Noël',
+        ];
+    }
+
     public function planning(Request $request)
     {
         $selectedWeek = $request->input('week', now()->format('W'));
@@ -103,11 +128,18 @@ class AdminController extends Controller
             return $typeComparison;
         });
 
+        $years = $daysInWeek->map->year->unique();
+        $holidays = [];
+        foreach ($years as $y) {
+            $holidays += $this->belgianHolidays($y);
+        }
+
         return view('admin.planning', [
             'planningEntries' => $planningEntries,
-            'daysInWeek' => $daysInWeek,
-            'selectedWeek' => (int)$selectedWeek,
-            'selectedYear' => (int)$selectedYear
+            'daysInWeek'      => $daysInWeek,
+            'selectedWeek'    => (int) $selectedWeek,
+            'selectedYear'    => (int) $selectedYear,
+            'holidays'        => $holidays,
         ]);
     }
 
@@ -241,6 +273,12 @@ class AdminController extends Controller
                 return $typeComparison;
             });
 
+        $years = $daysInWeek->map->year->unique();
+        $holidays = [];
+        foreach ($years as $y) {
+            $holidays += $this->belgianHolidays($y);
+        }
+
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -249,10 +287,27 @@ class AdminController extends Controller
         foreach ($daysInWeek as $index => $day) {
             $columnC = Coordinate::stringFromColumnIndex($index * 2 + 4);
             $columnD = Coordinate::stringFromColumnIndex($index * 2 + 5);
-            $value = $day->translatedFormat('l d-m-Y');
-            $sheet->setCellValue($columnC . '1', strtoupper($value));
+            $dateStr = $day->toDateString();
+            $isHoliday = isset($holidays[$dateStr]);
+
+            $value = strtoupper($day->translatedFormat('l d-m-Y'));
+            if ($isHoliday) {
+                $value .= "\n" . $holidays[$dateStr];
+            }
+            $sheet->setCellValue($columnC . '1', $value);
             $sheet->mergeCells($columnC . '1:' . $columnD . '1');
             $sheet->getStyle($columnC . '1')->getAlignment()->setHorizontal('center');
+            $sheet->getStyle($columnC . '1')->getAlignment()->setWrapText(true);
+
+            if ($isHoliday) {
+                $sheet->getStyle($columnC . '1:' . $columnD . '1')->applyFromArray([
+                    'fill' => [
+                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => '99F6E4'],
+                    ],
+                    'font' => ['color' => ['rgb' => '134E4A']],
+                ]);
+            }
         }
 
         $sheet->getStyle('A1:' . Coordinate::stringFromColumnIndex($daysInWeek->count() * 2 + 3) . '1')->applyFromArray([
@@ -330,10 +385,20 @@ class AdminController extends Controller
                 foreach ($daysInWeek as $index => $day) {
                     $columnC = Coordinate::stringFromColumnIndex($index * 2 + 4);
                     $columnD = Coordinate::stringFromColumnIndex($index * 2 + 5);
+                    $dateStr = $day->toDateString();
+                    $isHoliday = isset($holidays[$dateStr]);
 
-                    $entriesForDay = $entriesByUser->where('date', $day->toDateString());
+                    $entriesForDay = $entriesByUser->where('date', $dateStr);
 
-                    if ($entriesForDay->isNotEmpty()) {
+                    if ($isHoliday) {
+                        $sheet->setCellValue($columnC . $row, 'JOUR FÉRIÉ' . "\n" . $holidays[$dateStr]);
+                        $sheet->mergeCells($columnC . $row . ':' . $columnD . $row);
+                        $sheet->getStyle($columnC . $row)->applyFromArray([
+                            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '99F6E4']],
+                            'font' => ['bold' => true, 'color' => ['rgb' => '134E4A']],
+                            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+                        ]);
+                    } elseif ($entriesForDay->isNotEmpty()) {
                         $content = '';
 
                         foreach ($entriesForDay as $entry) {

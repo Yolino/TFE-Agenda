@@ -11,35 +11,42 @@
                 <i class="fa-duotone fa-horizontal-rule mr-2 opacity-50"></i> Sublevel 1
             </a>
         </div> -->
-        <div @click="open = !open" class="block py-3 px-2 rounded-box transition duration-200 cursor-pointer text-white">
-            <i class="fa-duotone fa-calendar-days mr-2"></i> Planning
+        <div @click="open = !open" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 cursor-pointer text-white">
+            <i class="fa-duotone fa-calendar-days w-6 text-center shrink-0"></i>
+            <span>Planning</span>
         </div>
         <div x-show="open" class="opacity-80 p-2 space-y-2 " x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90">
-            <a href="{{ route('mon-planning.index') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
-                <i class="fa-duotone fa-calendar-days mr-3"></i> Mon planning
+            <a href="{{ route('mon-planning.index') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+                <i class="fa-duotone fa-calendar-days w-6 text-center shrink-0"></i>
+                <span>Mon planning</span>
             </a>
-            <a href="{{ route('planning') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
-                <i class="fa-duotone fa-calendar-days mr-3"></i> Crocheux
+            <a href="{{ route('planning') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+                <i class="fa-duotone fa-calendar-days w-6 text-center shrink-0"></i>
+                <span>Crocheux</span>
             </a>
         </div>
-        <a href="{{ route('mes-conges.index') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
-            <i class="fa-duotone fa-solid fa-person-walking-luggage fa-lg"></i> Mes congés
+        <a href="{{ route('mes-conges.index') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+            <i class="fa-duotone fa-solid fa-person-walking-luggage fa-lg w-6 text-center shrink-0"></i>
+            <span>Mes congés</span>
         </a>
-        <a href="{{ route('justificatif-absence.index') }}" class="block py-2.5 px-4 rounded-box transition duration-200 text-white">
-            <i class="fa-duotone fa-solid fa-face-head-bandage fa-lg"></i> Justificatifs d'absence
+        <a href="{{ route('justificatif-absence.index') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+            <i class="fa-duotone fa-solid fa-face-head-bandage fa-lg w-6 text-center shrink-0"></i>
+            <span>Justificatifs d'absence</span>
         </a>
         @if(Auth::user()->is_admin())
             @php
                 $nbCongesEnAttente = \App\Models\DemandeConge::where('status', 'envoyee')->count();
             @endphp
-            <a href="{{ route('admin.conges') }}" class="block py-1 px-2 rounded-box transition text-base-100 duration-200 flex items-center">
-                <i class="fa-duotone fa-clipboard-check mr-2"></i> Gestion des congés
+            <a href="{{ route('admin.conges') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+                <i class="fa-duotone fa-clipboard-check w-6 text-center shrink-0"></i>
+                <span>Gestion des congés</span>
                 @if($nbCongesEnAttente > 0)
                     <span class="badge badge-sm badge-warning ml-auto">{{ $nbCongesEnAttente }}</span>
                 @endif
             </a>
-            <a href="{{ route('admin.user') }}" class="block py-1 px-2 rounded-box transition text-base-100 duration-200">
-                <i class="fa-duotone fa-user mr-2"></i> Utilisateurs
+            <a href="{{ route('admin.user') }}" class="flex items-center gap-3 py-2.5 px-4 rounded-box transition duration-200 text-white">
+                <i class="fa-duotone fa-user w-6 text-center shrink-0"></i>
+                <span>Utilisateurs</span>
             </a>
         @endif
         <!--

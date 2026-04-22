@@ -73,7 +73,8 @@
                         'bg-red-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'indisponible',
                         'bg-purple-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'recup',
                         'bg-orange-400/[0.8]': isDayFilled({{ $i }}).entry.status === 'css',
-                        'bg-pink-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'maladie'
+                        'bg-pink-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'maladie',
+                        'bg-teal-400/[0.9]': isDayFilled({{ $i }}).entry.status === 'jour_ferie'
                     }">
                         <p x-text="formatStatus(isDayFilled({{ $i }}).entry.status)" class="text-[10px] xl:text-base text-center font-bold"></p>
 
@@ -101,6 +102,13 @@
                         <button @click.stop="deleteEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-danger my-1">Supprimer</button>
                     </div>
                 </template>
+
+                <template x-if="getHoliday({{ $i }}) && daysInMonthArray[{{ $i - 1 }}]">
+                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-teal-400/[0.95] z-10">
+                        <p class="text-[10px] xl:text-base text-center font-bold">JOUR FÉRIÉ</p>
+                        <p class="text-[8px] xl:text-xs text-center opacity-80 italic px-1 truncate w-full text-center" x-text="getHoliday({{ $i }})"></p>
+                    </div>
+                </template>
         </div>
         @endfor
     </div>
@@ -125,6 +133,7 @@
                                 <option value="css">Congé sans solde (CSS)</option>
                                 <option value="indisponible">Indisponible</option>
                                 <option value="maladie">Maladie</option>
+                                <option value="jour_ferie">Jour férié</option>
                             </select>
                         </div>
 
@@ -171,6 +180,8 @@
 <script>
     function calendar(userId, userEntries, currentYear, currentMonth, startTime, endTime, startTimeAfternoon, endTimeAfternoon) {
         return {
+            holidaysBE: {},
+            holidaysInitialized: false,
             selectedMonthYear: `${currentYear}-${currentMonth < 10 ? '0' : ''}${currentMonth}`,
             monthYearOptions: {},
             daysInMonthArray: Array(35).fill(null),
@@ -215,7 +226,35 @@
             },
             init() {
                 this.populateMonthYearOptions();
+                this.loadHolidays();
                 this.updateCalendar();
+            },
+
+            loadHolidays() {
+                try {
+                    if (typeof window.Holidays === 'undefined') return;
+                    const hd = new window.Holidays('BE');
+                    const map = {};
+                    for (let y = currentYear; y <= currentYear + 1; y++) {
+                        (hd.getHolidays(y) || []).forEach(h => {
+                            if (h.type !== 'public') return;
+                            const d = h.date.substring(0, 10);
+                            map[d] = h.name;
+                        });
+                    }
+                    this.holidaysBE = map;
+                    this.holidaysInitialized = true;
+                } catch (e) {
+                    console.warn('date-holidays init failed', e);
+                }
+            },
+
+            getHoliday(dayIndex) {
+                const selectedDay = this.daysInMonthArray[dayIndex - 1];
+                if (!selectedDay) return null;
+                const [year, month] = this.selectedMonthYear.split('-').map(Number);
+                const date = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+                return this.holidaysBE[date] || null;
             },
 
             formatTime(timeString) {
@@ -238,6 +277,8 @@
                         return 'INDISPONIBLE';
                     case 'maladie':
                         return 'MALADIE';
+                    case 'jour_ferie':
+                        return 'JOUR FÉRIÉ';
                     default:
                         return status;
                 }
@@ -648,7 +689,7 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
-                            holidays: [],
+                            holidays: Object.keys(this.holidaysBE),
                             user_id: userId
                         })
                     })
