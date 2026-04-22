@@ -74,44 +74,54 @@ class AdminController extends Controller
             return $day;
         });
 
-        $planningEntries = $users->map(function ($user) use ($daysInWeek) {
+        $years = $daysInWeek->map->year->unique();
+        $holidays = [];
+        foreach ($years as $y) {
+            $holidays += $this->belgianHolidays($y);
+        }
+
+        $planningEntries = $users->map(function ($user) use ($daysInWeek, $holidays) {
             $entries = Planning::where('user_id', $user->id)
                 ->whereIn('date', $daysInWeek->map->toDateString())
                 ->with('demandeConge')
-                ->get();
+                ->get()
+                ->keyBy('date');
 
-            if ($entries->isEmpty()) {
-                $templatesByDay = $user->planningTemplates->keyBy('day_of_week');
+            $templatesByDay = $user->planningTemplates->keyBy('day_of_week');
 
-                foreach ($daysInWeek as $day) {
-                    $template = $templatesByDay->get((int) $day->isoWeekday());
+            foreach ($daysInWeek as $day) {
+                $dateStr = $day->toDateString();
 
-                    if (!$template || $template->status === 'neant') {
-                        continue;
-                    }
-
-                    Planning::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'date' => $day->toDateString(),
-                        ],
-                        [
-                            'status_id' => $template->status_id,
-                            'start_time_morning' => $template->start_time_morning,
-                            'end_time_morning' => $template->end_time_morning,
-                            'start_time_afternoon' => $template->start_time_afternoon,
-                            'end_time_afternoon' => $template->end_time_afternoon,
-                        ]
-                    );
+                // Jour férié → on ne touche pas
+                if (isset($holidays[$dateStr])) {
+                    continue;
                 }
 
-                $entries = Planning::where('user_id', $user->id)
-                    ->whereIn('date', $daysInWeek->map->toDateString())
-                    ->with('demandeConge')
-                    ->get();
+                // Jour déjà rempli dans Mon Planning → on ne touche pas
+                if ($entries->has($dateStr)) {
+                    continue;
+                }
+
+                $template = $templatesByDay->get((int) $day->isoWeekday());
+
+                if (!$template || $template->status === 'neant') {
+                    continue;
+                }
+
+                $new = Planning::create([
+                    'user_id'              => $user->id,
+                    'date'                 => $dateStr,
+                    'status_id'            => $template->status_id,
+                    'start_time_morning'   => $template->start_time_morning,
+                    'end_time_morning'     => $template->end_time_morning,
+                    'start_time_afternoon' => $template->start_time_afternoon,
+                    'end_time_afternoon'   => $template->end_time_afternoon,
+                ]);
+
+                $entries->put($dateStr, $new->load('demandeConge'));
             }
 
-            return $entries;
+            return $entries->values();
         })->flatten();
 
         $planningEntries = $planningEntries->filter(function ($entry) {
@@ -128,18 +138,13 @@ class AdminController extends Controller
             return $typeComparison;
         });
 
-        $years = $daysInWeek->map->year->unique();
-        $holidays = [];
-        foreach ($years as $y) {
-            $holidays += $this->belgianHolidays($y);
-        }
-
         return view('admin.planning', [
             'planningEntries' => $planningEntries,
             'daysInWeek'      => $daysInWeek,
             'selectedWeek'    => (int) $selectedWeek,
             'selectedYear'    => (int) $selectedYear,
             'holidays'        => $holidays,
+            'users'           => $users,
         ]);
     }
 
