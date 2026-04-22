@@ -38,6 +38,8 @@
     @endphp
     <div class="card-eg flex flex-row gap-4" x-data="{
         onglet: '{{ $ongletInitial }}',
+        selectedConge: null,
+        toggleDetails(id) { this.selectedConge = this.selectedConge === id ? null : id; },
         archivedIds: JSON.parse(localStorage.getItem('archived_conges') || '[]'),
         refuseeIds: @json($refuseeIds),
         totalConges: {{ $conges->count() }},
@@ -95,9 +97,9 @@
                     </thead>
                     <tbody>
                         @forelse ($conges as $conge)
-                        <tr class="hover" x-show="!isArchived({{ $conge->id }})">
+                        <tr class="hover cursor-pointer" x-show="!isArchived({{ $conge->id }})" @click="toggleDetails({{ $conge->id }})">
                             <th>
-                                <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser la demande" onclick="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank');">
+                                <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser le PDF" @click.stop="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank')">
                                     <i class="fa-duotone fa-eye"></i>
                                 </span>
                             </th>
@@ -113,7 +115,7 @@
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
                             </td>
-                            <td>
+                            <td @click.stop>
                                 @if($conge->status === 'en_cours')
                                     <button class="btn btn-sm btn-secondary tooltip update-conge" data-tip="Modifier"
                                         data-conge-id="{{ $conge->id }}"
@@ -137,6 +139,11 @@
                                         <i class="fa-duotone fa-box-archive"></i>
                                     </button>
                                 @endif
+                            </td>
+                        </tr>
+                        <tr x-show="selectedConge === {{ $conge->id }} && !isArchived({{ $conge->id }})" x-cloak>
+                            <td colspan="6">
+                                <x-conge-details :conge="$conge" />
                             </td>
                         </tr>
                         @empty
@@ -182,9 +189,9 @@
                         {{-- Congés refusés archivés depuis l'onglet actif --}}
                         @foreach ($conges as $conge)
                             @if($conge->status === 'refusee')
-                            <tr class="hover opacity-80" x-show="isArchived({{ $conge->id }})">
+                            <tr class="hover opacity-80 cursor-pointer" x-show="isArchived({{ $conge->id }})" @click="toggleDetails({{ $conge->id }})">
                                 <th>
-                                    <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser la demande" onclick="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank');">
+                                    <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser le PDF" @click.stop="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank')">
                                         <i class="fa-duotone fa-eye"></i>
                                     </span>
                                 </th>
@@ -200,13 +207,18 @@
                                     <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 </td>
                             </tr>
+                            <tr x-show="selectedConge === {{ $conge->id }} && isArchived({{ $conge->id }})" x-cloak>
+                                <td colspan="5">
+                                    <x-conge-details :conge="$conge" />
+                                </td>
+                            </tr>
                             @endif
                         @endforeach
                         {{-- Historique existant --}}
                         @forelse ($historique as $conge)
-                        <tr class="hover opacity-80">
+                        <tr class="hover opacity-80 cursor-pointer" @click="toggleDetails({{ $conge->id }})">
                             <th>
-                                <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser la demande" onclick="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank');">
+                                <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser le PDF" @click.stop="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank')">
                                     <i class="fa-duotone fa-eye"></i>
                                 </span>
                             </th>
@@ -221,6 +233,11 @@
                             <td>
                                 <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
                                 <div class="mt-1"><x-conge-decision :conge="$conge" /></div>
+                            </td>
+                        </tr>
+                        <tr x-show="selectedConge === {{ $conge->id }}" x-cloak>
+                            <td colspan="5">
+                                <x-conge-details :conge="$conge" />
                             </td>
                         </tr>
                         @empty

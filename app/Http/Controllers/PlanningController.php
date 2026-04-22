@@ -10,6 +10,7 @@ use App\Http\Requests\PlanningRequest;
 use App\Models\Planning;
 use App\Models\PlanningTemplate;
 use App\Models\User;
+use App\Services\PlanningLockService;
 use Carbon\Carbon;
 
 class PlanningController extends Controller
@@ -65,6 +66,8 @@ class PlanningController extends Controller
                     ];
                 });
 
+        $firstEditableDate = PlanningLockService::firstEditableDate()->format('Y-m-d');
+
         return view('planning.index', compact(
             'months',
             'years',
@@ -77,7 +80,8 @@ class PlanningController extends Controller
             'endTimeAfternoon',
             'userEntries',
             'targetUserId',
-            'users'
+            'users',
+            'firstEditableDate'
         ));
     }
 
@@ -86,6 +90,10 @@ class PlanningController extends Controller
         $credentials = $planningRequest->validated();
 
         Gate::authorize('manage-planning', (int) $credentials['user_id']);
+
+        if (! PlanningLockService::isDateEditable($credentials['date'])) {
+            return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
+        }
 
         Planning::create([
             'user_id' => $credentials['user_id'],
@@ -124,6 +132,11 @@ class PlanningController extends Controller
         );
 
         while ($startDate->lte($endDate)) {
+            if (! PlanningLockService::isDateEditable($startDate)) {
+                $startDate->addDay();
+                continue;
+            }
+
             if (in_array($startDate->format('Y-m-d'), $holidays)) {
                 $startDate->addDay();
                 continue;
@@ -205,6 +218,10 @@ class PlanningController extends Controller
 
         Gate::authorize('manage-planning', (int) $entry->user_id);
 
+        if (! PlanningLockService::isDateEditable($entry->date) || ! PlanningLockService::isDateEditable($credentials['date'])) {
+            return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
+        }
+
         $entry->update([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
@@ -223,6 +240,10 @@ class PlanningController extends Controller
         $entry = Planning::findOrFail($id);
 
         Gate::authorize('manage-planning', (int) $entry->user_id);
+
+        if (! PlanningLockService::isDateEditable($entry->date)) {
+            return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
+        }
 
         $entry->delete();
         return response()->json(['message' => 'Suppression réussie'], 200);

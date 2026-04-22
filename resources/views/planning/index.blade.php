@@ -10,7 +10,7 @@
         <h1 class="text-4xl font-medium">Mon planning</h1>
     </div>
 
-    <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon))' class="card-eg">
+    <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate))' class="card-eg">
 
         {{-- Sélecteur d'utilisateur pour les admins --}}
         @if(auth()->user()->is_admin() && $users->isNotEmpty())
@@ -43,8 +43,14 @@
 
         {{-- Indicateur copier/coller (usage unique) --}}
         <div x-show="copiedData" x-transition class="flex items-center justify-between mb-4 p-2 bg-info/20 rounded-box text-sm">
-            <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour vide pour coller (usage unique)</span>
+            <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour pour coller (usage unique)</span>
             <button @click="cancelCopy()" class="btn btn-xs btn-ghost">Annuler</button>
+        </div>
+
+        {{-- Indicateur de verrouillage temporel --}}
+        <div x-show="isMonthFullyLocked()" x-transition class="flex items-center gap-2 mb-4 p-2 bg-warning/20 rounded-box text-sm">
+            <i class="fa-duotone fa-lock"></i>
+            <span>Ce mois est verrouillé. L'édition n'est possible qu'à partir du <strong x-text="formatLockDate()"></strong> (lundi de la semaine suivante).</span>
         </div>
 
         <div class="grid grid-cols-7 gap-4">
@@ -54,17 +60,21 @@
             </div>
             @endforeach
 
-            @for ($i = 1; $i <= 35; $i++) <div class="border aspect-square flex relative group" :class="{
-                    'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}),
+            @for ($i = 1; $i <= 35; $i++) <div class="border aspect-square flex relative group transition" :class="{
+                    'hover:bg-secondary hover:text-white cursor-pointer': daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}) && !isDayLocked({{ $i }}),
                     'cursor-not-allowed opacity-90': getHoliday({{ $i }}),
                     'bg-success': isDayFilled({{ $i }}).filled,
-                    'ring-2 ring-info ring-offset-1': copiedDayIndex === {{ $i }}
+                    'ring-2 ring-info ring-offset-1': copiedDayIndex === {{ $i }},
+                    'hover:ring-2 hover:ring-info hover:ring-offset-1 hover:cursor-copy': copiedData && copiedDayIndex !== {{ $i }} && daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}) && !isDayLocked({{ $i }}),
+                    'bg-base-300/60 cursor-not-allowed pointer-events-none': isDayLocked({{ $i }}) && daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }})
                 }" @click="handleDayClick({{ $i }})">
                 @php
                 $weekNumber = intdiv($i + 6, 7);
                 @endphp
                 <span x-text="daysInMonthArray[{{ $i - 1 }}]" class="text-[7px] xl:text-xs font-bold p-3 absolute top-0 left-0"></span>
-                @if ($i % 7===1) <button @click.stop="fillWeekAutomatically({{ $weekNumber }})" class="btn btn-xs text-[7px] xl:text-xs btn-ghost absolute top-2 right-2 z-10 opacity-25 hover:opacity-100 tooltip" data-tip="Remplir automatiquement">auto <i class="fa-duotone fa-arrow-right"></i></button>@endif
+                @if ($i % 7===1)
+                    <button x-show="!isWeekLocked({{ $weekNumber }})" @click.stop="fillWeekAutomatically({{ $weekNumber }})" class="btn btn-xs text-[7px] xl:text-xs btn-ghost absolute top-2 right-2 z-10 opacity-25 hover:opacity-100 tooltip" data-tip="Remplir automatiquement">auto <i class="fa-duotone fa-arrow-right"></i></button>
+                @endif
 
                 <template x-if="isDayFilled({{ $i }}).filled">
                     <div class="absolute inset-0 flex flex-col items-center justify-center" :class="{
@@ -97,10 +107,36 @@
                 </template>
 
                 <template x-if="isDayFilled({{ $i }}).filled">
-                    <div class="absolute inset-0 flex flex-col items-center justify-center hidden group-hover:flex">
-                        <button class="btn btn-xs xl:btn-sm btn-primary my-1" @click.stop="openDayModal({{ $i }})">Modifier</button>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center hidden group-hover:flex" x-show="!copiedData">
+                        <template x-if="!isDayLocked({{ $i }})">
+                            <button class="btn btn-xs xl:btn-sm btn-primary my-1" @click.stop="openDayModal({{ $i }})">Modifier</button>
+                        </template>
                         <button @click.stop="copyEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-secondary my-1"><i class="fa-duotone fa-copy mr-1"></i>Copier</button>
-                        <button @click.stop="deleteEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-danger my-1">Supprimer</button>
+                        <template x-if="!isDayLocked({{ $i }})">
+                            <button @click.stop="deleteEntry({{ $i }})" class="btn btn-xs xl:btn-sm btn-danger my-1">Supprimer</button>
+                        </template>
+                    </div>
+                </template>
+
+                {{-- Badge "Coller" affiché au survol quand le mode copie est actif --}}
+                <template x-if="copiedData && daysInMonthArray[{{ $i - 1 }}] && copiedDayIndex !== {{ $i }} && !getHoliday({{ $i }}) && !isDayLocked({{ $i }})">
+                    <div class="absolute inset-0 hidden group-hover:flex flex-col items-center justify-center backdrop-blur-[2px] bg-info/10 rounded">
+                        <div class="flex flex-col items-center gap-1 bg-info text-info-content rounded-xl px-2 py-1 shadow-lg scale-90 xl:scale-100">
+                            <i class="fa-duotone fa-clipboard-arrow-down text-lg xl:text-2xl"></i>
+                            <span class="text-[9px] xl:text-xs font-bold tracking-wide uppercase">Coller ici</span>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="isDayLocked({{ $i }}) && daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}) && !isDayFilled({{ $i }}).filled">
+                    <div class="absolute inset-0 flex items-center justify-center bg-base-300/40">
+                        <i class="fa-duotone fa-lock text-base-content/40 text-xl"></i>
+                    </div>
+                </template>
+
+                <template x-if="isDayLocked({{ $i }}) && daysInMonthArray[{{ $i - 1 }}] && !getHoliday({{ $i }}) && isDayFilled({{ $i }}).filled">
+                    <div class="absolute top-1 right-1 z-10">
+                        <i class="fa-duotone fa-lock text-base-content/60 text-xs" title="Semaine verrouillée"></i>
                     </div>
                 </template>
 
@@ -179,10 +215,11 @@
 
 @push('scripts')
 <script>
-    function calendar(userId, userEntries, currentYear, currentMonth, startTime, endTime, startTimeAfternoon, endTimeAfternoon) {
+    function calendar(userId, userEntries, currentYear, currentMonth, startTime, endTime, startTimeAfternoon, endTimeAfternoon, firstEditableDate) {
         return {
             holidaysBE: {},
             holidaysInitialized: false,
+            firstEditableDate: firstEditableDate,
             selectedMonthYear: `${currentYear}-${currentMonth < 10 ? '0' : ''}${currentMonth}`,
             monthYearOptions: {},
             daysInMonthArray: Array(35).fill(null),
@@ -256,6 +293,49 @@
                 const [year, month] = this.selectedMonthYear.split('-').map(Number);
                 const date = `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
                 return this.holidaysBE[date] || null;
+            },
+
+            // Verrouillage temporel : seules les dates >= lundi de la semaine prochaine sont éditables
+            getDateForDay(dayIndex) {
+                const selectedDay = this.daysInMonthArray[dayIndex - 1];
+                if (!selectedDay) return null;
+                const [year, month] = this.selectedMonthYear.split('-').map(Number);
+                return `${year}-${String(month).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+            },
+
+            isDateLocked(dateStr) {
+                if (!dateStr) return false;
+                return dateStr < this.firstEditableDate;
+            },
+
+            isDayLocked(dayIndex) {
+                return this.isDateLocked(this.getDateForDay(dayIndex));
+            },
+
+            isWeekLocked(weekNumber) {
+                const startIdx = (weekNumber - 1) * 7;
+                for (let i = startIdx; i < startIdx + 7; i++) {
+                    const day = this.daysInMonthArray[i];
+                    if (!day) continue;
+                    if (!this.isDateLocked(this.getDateForDay(i + 1))) return false;
+                }
+                return true;
+            },
+
+            isMonthFullyLocked() {
+                for (let i = 1; i <= 35; i++) {
+                    const day = this.daysInMonthArray[i - 1];
+                    if (!day) continue;
+                    if (!this.isDayLocked(i)) return false;
+                }
+                return true;
+            },
+
+            formatLockDate() {
+                if (!this.firstEditableDate) return '';
+                return new Date(this.firstEditableDate).toLocaleDateString('fr-FR', {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                });
             },
 
             formatTime(timeString) {
@@ -363,7 +443,22 @@
                     return;
                 }
 
-                if (this.copiedData && !this.isDayFilled(day).filled && this.daysInMonthArray[day - 1]) {
+                // Verrouillage temporel : refuser toute édition sur les semaines passées / courante
+                if (this.isDayLocked(day)) {
+                    Swal.fire({
+                        title: 'Semaine verrouillée',
+                        text: 'L\'édition n\'est possible qu\'à partir du lundi de la semaine suivante.',
+                        icon: 'info',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true,
+                    });
+                    return;
+                }
+
+                if (this.copiedData && this.daysInMonthArray[day - 1]) {
                     this.pasteEntry(day);
                 } else {
                     this.openDayModal(day);
@@ -405,6 +500,55 @@
             pasteEntry(dayIndex) {
                 if (!this.copiedData || !this.daysInMonthArray[dayIndex - 1]) return;
 
+                // Bloquer totalement le coller sur un jour férié
+                if (this.getHoliday(dayIndex)) {
+                    Swal.fire({
+                        title: 'Action interdite',
+                        text: 'Impossible de coller sur un jour férié.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+
+                // Bloquer si la cible est dans une semaine verrouillée
+                if (this.isDayLocked(dayIndex)) {
+                    Swal.fire({
+                        title: 'Semaine verrouillée',
+                        text: 'L\'édition n\'est possible qu\'à partir du lundi de la semaine suivante.',
+                        icon: 'info'
+                    });
+                    return;
+                }
+
+                const target = this.isDayFilled(dayIndex);
+                const protectedStatuses = ['conge', 'maladie', 'recup', 'css'];
+
+                // Si la cible contient un congé/maladie : confirmation avant écrasement
+                if (target.filled && protectedStatuses.includes(target.entry.status)) {
+                    const labelMap = { conge: 'Congé', maladie: 'Maladie', recup: 'Récupération', css: 'Congé sans solde' };
+                    Swal.fire({
+                        title: 'Attention',
+                        html: `Cette tuile contient déjà <strong>${labelMap[target.entry.status]}</strong>.<br>Êtes-vous sûr de vouloir l'écraser ?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Oui, écraser',
+                        cancelButtonText: 'Annuler',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-error',
+                            cancelButton: 'btn btn-neutral ml-3',
+                        },
+                    }).then((result) => {
+                        if (result.isConfirmed) this.sendPaste(dayIndex, target);
+                    });
+                    return;
+                }
+
+                this.sendPaste(dayIndex, target);
+            },
+
+            sendPaste(dayIndex, target) {
                 const selectedYear = this.selectedMonthYear.split('-')[0];
                 const selectedMonth = this.selectedMonthYear.split('-')[1];
                 const selectedDay = this.daysInMonthArray[dayIndex - 1].toString().padStart(2, '0');
@@ -420,7 +564,12 @@
                     end_time_afternoon: this.copiedData.end_time_afternoon,
                 };
 
-                fetch('/mon-planning/store', {
+                // Si la tuile cible est déjà remplie, on appelle update (PATCH) plutôt que store
+                const isOverwrite = target.filled;
+                const url = isOverwrite ? `/mon-planning/update/${target.entryId}` : '/mon-planning/store';
+                if (isOverwrite) bodyData._method = 'PATCH';
+
+                fetch(url, {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -435,7 +584,7 @@
                 .then(data => {
                     Swal.fire({
                         title: 'Collé !',
-                        text: 'La tuile a été dupliquée avec succès.',
+                        text: isOverwrite ? 'La tuile a été remplacée avec succès.' : 'La tuile a été dupliquée avec succès.',
                         icon: 'success',
                         toast: true,
                         position: 'top-end',
@@ -443,7 +592,6 @@
                         timer: 2000,
                         timerProgressBar: true,
                     });
-                    // Le presse-papier est à usage unique : réinitialiser après coller
                     this.cancelCopy();
                     this.reloadPlanningEntries();
                 })
