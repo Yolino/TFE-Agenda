@@ -65,10 +65,13 @@ class AdminController extends Controller
             return Carbon::now()->setISODate($selectedYear, $selectedWeek, $dayOffset);
         });
 
-        $daysInWeek = $daysInWeek->map(function ($day) use ($selectedYear, $selectedWeek) {
-            if ($day->weekOfYear() === 1 && $selectedWeek > 51) {
+        $weeksInYear     = (int) Carbon::create((int) $selectedYear, 12, 28)->format('W');
+        $weeksInPrevYear = (int) Carbon::create((int) $selectedYear - 1, 12, 28)->format('W');
+
+        $daysInWeek = $daysInWeek->map(function ($day) use ($selectedYear, $selectedWeek, $weeksInYear, $weeksInPrevYear) {
+            if ($day->isoWeek() === 1 && $selectedWeek === $weeksInYear) {
                 return $day->copy()->setYear($selectedYear + 1);
-            } elseif ($day->weekOfYear() > 51 && $selectedWeek === 1) {
+            } elseif ($day->isoWeek() === $weeksInPrevYear && $selectedWeek === 1) {
                 return $day->copy()->setYear($selectedYear - 1);
             }
             return $day;
@@ -531,5 +534,91 @@ class AdminController extends Controller
         $writer->save($filePath);
 
         return response()->download($filePath)->deleteFileAfterSend(true);
+    }
+
+    public function exportPlanningPdf(Request $request, $week, $year)
+    {
+        $selectedWeek = $week ?? now()->format('W');
+        $selectedYear = $year ?? now()->year;
+
+        $daysInWeek = collect(range(1, 6))->map(function ($dayOffset) use ($selectedYear, $selectedWeek) {
+            return now()->setISODate($selectedYear, $selectedWeek, $dayOffset);
+        });
+
+        $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
+            ->get()
+            ->sort(function ($a, $b) {
+                $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+                $typeComparison = $typeOrder[$a->user->type] <=> $typeOrder[$b->user->type];
+                return $typeComparison === 0 ? strcmp($a->user->name, $b->user->name) : $typeComparison;
+            });
+
+        $years = $daysInWeek->map->year->unique();
+        $holidays = [];
+        foreach ($years as $y) {
+            $holidays += $this->belgianHolidays($y);
+        }
+
+        $users = User::where('actif', true)->get();
+        $typeOrder  = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $typeLabels = ['B' => 'Salaire', 'S' => 'Secrétariat', 'C' => 'Comptabilité', 'I' => 'Informatique'];
+        $congeTypeLabels = [
+            'recup' => 'Récup.',
+            'conge' => 'Congé (VA)',
+            'css' => 'CSS',
+            'visite' => 'Visite méd.',
+            'autre' => 'Autre',
+        ];
+
+        $activeUsers = $users->sortBy([
+                fn($a, $b) => ($typeOrder[$a->type] ?? 99) <=> ($typeOrder[$b->type] ?? 99),
+                fn($a, $b) => strcmp($a->name, $b->name),
+            ])
+            ->groupBy('type')
+            ->sortBy(fn($group, $type) => $typeOrder[$type] ?? 99);
+
+        $deptColors = [
+            'B' => ['bg' => '#d9ead3', 'text' => '#274e13'],
+            'S' => ['bg' => '#fce5cd', 'text' => '#783f04'],
+            'C' => ['bg' => '#dae8fc', 'text' => '#1c4587'],
+            'I' => ['bg' => '#fff2cc', 'text' => '#7f6000'],
+        ];
+
+        $html = view('admin.planning_pdf', compact(
+            'selectedWeek', 'selectedYear', 'daysInWeek',
+            'planningEntries', 'holidays', 'activeUsers',
+            'typeLabels', 'congeTypeLabels', 'deptColors'
+        ))->render();
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', false);
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('defaultMediaType', 'print');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $canvas = $dompdf->getCanvas();
+        $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) {
+            $font = $fontMetrics->getFont("DejaVu Sans", "normal");
+            $text = "Page $pageNumber / $pageCount";
+            $size = 7;
+            $textWidth = $fontMetrics->getTextWidth($text, $font, $size);
+            $canvas->text(
+                $canvas->get_width() - $textWidth - 20,
+                $canvas->get_height() - 15,
+                $text, $font, $size, [0.3, 0.3, 0.3]
+            );
+        });
+
+        $fileName = 'planning_semaine' . $selectedWeek . '_' . $selectedYear . '.pdf';
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
     }
 }
