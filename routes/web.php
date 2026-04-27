@@ -96,3 +96,4 @@ Route::get('/admin/test-excel-to-pdf', function () {
 Route::post('/admin/excel-to-pdf', [AdminController::class, 'excelToPdf'])->name('admin.excelToPdf');
 
 Route::get('/admin/planning/export/{week}/{year}', [AdminController::class, 'exportPlanning'])->name('planning.export')->middleware('auth', 'is_admin');
+Route::get('/admin/planning/export-pdf/{week}/{year}', [AdminController::class, 'exportPlanningPdf'])->name('planning.export.pdf')->middleware('auth', 'is_admin');

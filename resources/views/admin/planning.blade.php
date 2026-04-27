@@ -18,8 +18,11 @@
                 $previousYear = $selectedYear;
                 $nextYear = $selectedYear;
 
-                if ($previousWeek < 1) { $previousWeek = 52; $previousYear--; }
-                if ($nextWeek > 52)    { $nextWeek = 1;      $nextYear++;     }
+                $weeksInCurrentYear  = (int) \Carbon\Carbon::create($selectedYear, 12, 28)->format('W');
+                $weeksInPreviousYear = (int) \Carbon\Carbon::create($selectedYear - 1, 12, 28)->format('W');
+
+                if ($previousWeek < 1)                   { $previousWeek = $weeksInPreviousYear; $previousYear--; }
+                if ($nextWeek > $weeksInCurrentYear)     { $nextWeek = 1;                        $nextYear++;     }
             @endphp
 
             <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
@@ -31,9 +34,12 @@
             </button>
         </div>
 
-        <div class="flex justify-end mb-4">
+        <div class="flex justify-end mb-4 gap-2">
+            <a href="{{ route('planning.export.pdf', ['week' => $selectedWeek, 'year' => $selectedYear]) }}" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                <i class="fa-solid fa-file-pdf mr-1"></i> Télécharger en PDF
+            </a>
             <a href="{{ route('planning.export', ['week' => $selectedWeek, 'year' => $selectedYear]) }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                Télécharger en Excel
+                <i class="fa-solid fa-file-excel mr-1"></i> Télécharger en Excel
             </a>
         </div>
 
