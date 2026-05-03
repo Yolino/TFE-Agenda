@@ -12,6 +12,7 @@
         'envoyee' => ['label' => 'En attente', 'class' => 'badge-info'],
         'acceptee' => ['label' => 'Acceptée', 'class' => 'badge-success'],
         'refusee' => ['label' => 'Refusée', 'class' => 'badge-error'],
+        'annulee' => ['label' => 'Annulée', 'class' => 'badge-warning'],
     ];
 
     $formatJours = function ($n) {
@@ -31,6 +32,7 @@
         </button>
         <button wire:click="$set('filter', 'acceptee')" class="btn btn-sm {{ $filter === 'acceptee' ? 'btn-primary' : 'btn-ghost' }}">Acceptées</button>
         <button wire:click="$set('filter', 'refusee')" class="btn btn-sm {{ $filter === 'refusee' ? 'btn-primary' : 'btn-ghost' }}">Refusées</button>
+        <button wire:click="$set('filter', 'annulee')" class="btn btn-sm {{ $filter === 'annulee' ? 'btn-primary' : 'btn-ghost' }}">Annulées</button>
         <button wire:click="$set('filter', 'toutes')" class="btn btn-sm {{ $filter === 'toutes' ? 'btn-primary' : 'btn-ghost' }}">Toutes</button>
     </div>
 

@@ -21,10 +21,18 @@ class PlanningRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Statuts réservés aux admins : ne peuvent pas être posés via l'UI standard.
+        $userStatuses = ['bureau', 'tele_travail', 'recup'];
+        $adminOnlyStatuses = ['conge', 'css', 'indisponible', 'maladie', 'jour_ferie'];
+
+        $allowedStatuses = auth()->check() && auth()->user()->is_admin()
+            ? array_merge($userStatuses, $adminOnlyStatuses)
+            : $userStatuses;
+
         return [
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'status' => 'required|in:bureau,tele_travail,conge,recup,css,indisponible,maladie',
+            'status' => 'required|in:' . implode(',', $allowedStatuses),
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'start_time_afternoon' => 'nullable|date_format:H:i',

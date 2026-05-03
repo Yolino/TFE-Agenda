@@ -10,7 +10,7 @@
         <h1 class="text-4xl font-medium">Mon planning</h1>
     </div>
 
-    <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate))' class="card-eg">
+    <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate), @json(auth()->user()->is_admin()))' class="card-eg">
 
         {{-- Sélecteur d'utilisateur pour les admins --}}
         @if(auth()->user()->is_admin() && $users->isNotEmpty())
@@ -165,12 +165,17 @@
                             <select x-model="dayData.status" class="w-full border rounded px-3 py-2 outline-none">
                                 <option value="bureau">Au bureau</option>
                                 <option value="tele_travail">Télé-travail</option>
-                                <option value="conge">Congé (VA)</option>
                                 <option value="recup">Récupération</option>
-                                <option value="css">Congé sans solde (CSS)</option>
-                                <option value="indisponible">Indisponible</option>
-                                <option value="maladie">Maladie</option>
-                                <option value="jour_ferie">Jour férié</option>
+                                {{-- Statuts réservés aux admins : congés VA / sans-solde, indisponibilité, maladie, jour férié --}}
+                                <template x-if="isAdmin">
+                                    <optgroup label="Réservé aux admins">
+                                        <option value="conge">Congé (VA)</option>
+                                        <option value="css">Congé sans solde (CSS)</option>
+                                        <option value="indisponible">Indisponible</option>
+                                        <option value="maladie">Maladie</option>
+                                        <option value="jour_ferie">Jour férié</option>
+                                    </optgroup>
+                                </template>
                             </select>
                         </div>
 
@@ -215,11 +220,13 @@
 
 @push('scripts')
 <script>
-    function calendar(userId, userEntries, currentYear, currentMonth, startTime, endTime, startTimeAfternoon, endTimeAfternoon, firstEditableDate) {
+    function calendar(userId, userEntries, currentYear, currentMonth, startTime, endTime, startTimeAfternoon, endTimeAfternoon, firstEditableDate, isAdmin) {
         return {
             holidaysBE: {},
             holidaysInitialized: false,
             firstEditableDate: firstEditableDate,
+            isAdmin: !!isAdmin,
+            adminOnlyStatuses: ['conge', 'css', 'indisponible', 'maladie', 'jour_ferie'],
             selectedMonthYear: `${currentYear}-${currentMonth < 10 ? '0' : ''}${currentMonth}`,
             monthYearOptions: {},
             daysInMonthArray: Array(35).fill(null),
@@ -470,6 +477,21 @@
                 const { entry } = this.isDayFilled(dayIndex);
                 if (!entry) return;
 
+                // Un utilisateur non-admin ne peut pas dupliquer un statut réservé aux admins.
+                if (!this.isAdmin && this.adminOnlyStatuses.includes(entry.status)) {
+                    Swal.fire({
+                        title: 'Action interdite',
+                        text: 'Ce statut est géré par un administrateur et ne peut pas être copié.',
+                        icon: 'info',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true,
+                    });
+                    return;
+                }
+
                 this.copiedData = {
                     status: entry.status,
                     start_time: entry.start_time ? entry.start_time.substr(0, 5) : null,
@@ -653,6 +675,17 @@
             },
 
             submitDayForm() {
+                // Garde-fou côté client : un non-admin ne peut pas saisir un statut réservé.
+                if (!this.isAdmin && this.adminOnlyStatuses.includes(this.dayData.status)) {
+                    Swal.fire({
+                        title: 'Action interdite',
+                        text: 'Ce statut est réservé aux administrateurs.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+
                 const congeStatuts = ['acceptee', 'envoyee'];
                 const congeTypes = ['conge', 'recup', 'css'];
 
@@ -743,14 +776,17 @@
                         return response.json();
                     })
                     .then(data => {
+                        const congeAnnule = data && data.conge_cancelled;
                         Swal.fire({
                             title: 'Succès',
-                            text: 'Les informations ont été enregistrées avec succès.',
+                            text: congeAnnule
+                                ? 'La modification a été enregistrée et la demande de congé associée a été annulée.'
+                                : 'Les informations ont été enregistrées avec succès.',
                             icon: 'success',
                             toast: true,
                             position: 'top-end',
                             showConfirmButton: false,
-                            timer: 3000,
+                            timer: 3500,
                             timerProgressBar: true,
                             didOpen: (toast) => {
                                 toast.addEventListener('mouseenter', Swal.stopTimer)
@@ -794,16 +830,21 @@
             },
 
             deleteEntry(dayIndex) {
-                const entryId = this.isDayFilled(dayIndex).entryId;
+                const { entry, entryId } = this.isDayFilled(dayIndex);
+                const isCongeLinked = entry && entry.demande_conge_status && ['acceptee', 'envoyee'].includes(entry.demande_conge_status);
+
+                const warningHtml = isCongeLinked
+                    ? "Cette journée est liée à une <strong>demande de congé validée</strong>.<br>La supprimer annulera la demande et libèrera tous les jours associés."
+                    : "Vous ne pourrez pas revenir en arrière !";
 
                 Swal.fire({
-                    title: 'Êtes-vous sûr?',
-                    text: "Vous ne pourrez pas revenir en arrière!",
+                    title: 'Êtes-vous sûr ?',
+                    html: warningHtml,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#3085d6',
                     cancelButtonColor: '#d33',
-                    confirmButtonText: 'Oui, supprimez-le!',
+                    confirmButtonText: isCongeLinked ? 'Oui, annuler le congé' : 'Oui, supprimez-le!',
                     cancelButtonText: 'Annuler'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -817,7 +858,9 @@
                             .then(data => {
                                 Swal.fire({
                                     title: 'Succès',
-                                    text: 'Votre entrée a été supprimée.',
+                                    text: data && data.conge_cancelled
+                                        ? 'L\'entrée a été supprimée et la demande de congé annulée.'
+                                        : 'Votre entrée a été supprimée.',
                                     icon: 'success',
                                     toast: true,
                                     position: 'top-end',

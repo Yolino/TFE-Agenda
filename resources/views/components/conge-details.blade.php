@@ -13,6 +13,7 @@
         'envoyee'  => ['label' => 'En attente', 'class' => 'badge-info'],
         'acceptee' => ['label' => 'Acceptée',   'class' => 'badge-success'],
         'refusee'  => ['label' => 'Refusée',    'class' => 'badge-error'],
+        'annulee'  => ['label' => 'Annulée',    'class' => 'badge-warning'],
     ];
     $formatJours = function ($n) {
         $n = (float) $n;
@@ -60,6 +61,19 @@
         <div class="col-span-2">
             <p class="font-bold text-sm uppercase mb-1">Décision</p>
             <x-conge-decision :conge="$conge" />
+        </div>
+        @endif
+
+        @if($conge->status === 'annulee' && $conge->cancelled_at)
+        <div class="col-span-2">
+            <p class="font-bold text-sm uppercase mb-1">Annulation</p>
+            <p>
+                Annulée le
+                <strong>{{ \Carbon\Carbon::parse($conge->cancelled_at)->translatedFormat('d M Y à H:i') }}</strong>
+                @if($conge->cancelledBy)
+                    par {{ $conge->cancelledBy->firstname }} {{ $conge->cancelledBy->name }}
+                @endif
+            </p>
         </div>
         @endif
     </div>

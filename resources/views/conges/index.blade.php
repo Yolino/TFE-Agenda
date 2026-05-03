@@ -24,6 +24,7 @@
         'envoyee'  => ['label' => 'Envoyée',   'class' => 'badge-info'],
         'acceptee' => ['label' => 'Acceptée',  'class' => 'badge-success'],
         'refusee'  => ['label' => 'Refusée',   'class' => 'badge-error'],
+        'annulee'  => ['label' => 'Annulée',   'class' => 'badge-warning'],
     ];
 
     $formatJours = function ($n) {
@@ -133,6 +134,13 @@
                                             <i class="fa-duotone fa-trash-can"></i>
                                         </button>
                                     </a>
+                                @endif
+                                @if(in_array($conge->status, ['envoyee', 'acceptee']) && \Carbon\Carbon::parse($conge->start_date)->startOfDay()->gt(\Carbon\Carbon::today()))
+                                    <button type="button" class="btn btn-sm btn-warning tooltip cancel-conge-btn" data-tip="Annuler la demande"
+                                        data-cancel-url="{{ route('mes-conges.cancel', ['id' => $conge->id]) }}"
+                                        data-conge-status="{{ $conge->status }}">
+                                        <i class="fa-duotone fa-ban"></i>
+                                    </button>
                                 @endif
                                 @if($conge->status === 'refusee')
                                     <button @click="archiveConge({{ $conge->id }})" class="btn btn-sm btn-ghost tooltip" data-tip="Déplacer dans l'historique">
@@ -405,6 +413,35 @@
                 syncEditHalfDayVisibility();
 
                 document.getElementById('editModal').showModal();
+            });
+        });
+
+        document.querySelectorAll('.cancel-conge-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const cancelUrl = this.getAttribute('data-cancel-url');
+                const status = this.getAttribute('data-conge-status');
+
+                const message = status === 'acceptee'
+                    ? 'Cette demande a été <strong>acceptée</strong>. L\'annulation supprimera également les jours de congé déjà placés sur votre planning.'
+                    : 'L\'annulation retirera votre demande du circuit de validation.';
+
+                Swal.fire({
+                    title: 'Annuler la demande ?',
+                    html: message + '<br><br>Cette action est définitive.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Oui, annuler',
+                    cancelButtonText: 'Retour',
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'btn btn-warning',
+                        cancelButton: 'btn btn-neutral ml-3',
+                    },
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = cancelUrl;
+                    }
+                });
             });
         });
 

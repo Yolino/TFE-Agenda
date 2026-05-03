@@ -12,4 +12,16 @@
             le {{ \Carbon\Carbon::parse($conge->decided_at)->translatedFormat('d M Y à H:i') }}
         @endif
     </span>
+@elseif($conge->status === 'annulee' && $conge->cancelled_at)
+    @php
+        $cancelledBy = $conge->cancelledBy ?? null;
+    @endphp
+    <span class="text-xs italic text-warning">
+        <i class="fa-duotone fa-ban mr-1"></i>
+        Annulée
+        @if($cancelledBy)
+            par {{ $cancelledBy->firstname }} {{ $cancelledBy->name }}
+        @endif
+        le {{ \Carbon\Carbon::parse($conge->cancelled_at)->translatedFormat('d M Y à H:i') }}
+    </span>
 @endif

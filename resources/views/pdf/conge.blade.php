@@ -88,6 +88,11 @@
             background-color: #fde7e7;
         }
 
+        .decision.annulee {
+            color: #92610a;
+            background-color: #fef9c3;
+        }
+
         .decision-date {
             display: block;
             font-size: 14px;
@@ -144,6 +149,18 @@
                     le {{ \Carbon\Carbon::parse($conge->decided_at)->translatedFormat('d F Y à H\hi') }}
                 </span>
             @endif
+        </div>
+    @elseif($conge->status === 'annulee' && $conge->cancelled_at)
+        @php
+            $annuleur = $conge->cancelledBy
+                ? trim($conge->cancelledBy->firstname . ' ' . $conge->cancelledBy->name)
+                : null;
+        @endphp
+        <div class="decision annulee">
+            Annulée{{ $annuleur ? ' par ' . $annuleur : '' }}
+            <span class="decision-date">
+                le {{ \Carbon\Carbon::parse($conge->cancelled_at)->translatedFormat('d F Y à H\hi') }}
+            </span>
         </div>
     @endif
 </body>
