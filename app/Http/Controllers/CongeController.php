@@ -9,13 +9,16 @@ use Illuminate\View\View;
 use App\Http\Requests\CongeRequest;
 use App\Models\DemandeConge;
 use App\Services\LeaveBalanceService;
+use App\Services\CongeCancellationService;
 use Carbon\Carbon;
 use PDF;
 
 class CongeController extends Controller
 {
-    public function __construct(private LeaveBalanceService $leaveBalance)
-    {
+    public function __construct(
+        private LeaveBalanceService $leaveBalance,
+        private CongeCancellationService $cancellationService,
+    ) {
     }
 
     public function index(Request $request): View
@@ -30,7 +33,7 @@ class CongeController extends Controller
             $c->formattedEndDate   = Carbon::parse($c->end_date)->translatedFormat('d M Y');
         });
 
-        $conges = DemandeConge::with(['decidedBy', 'user'])
+        $conges = DemandeConge::with(['decidedBy', 'cancelledBy', 'user'])
             ->where('user_id', $user->id)
             ->where('end_date', '>=', $today)
             ->orderBy('start_date')
@@ -46,7 +49,7 @@ class CongeController extends Controller
 
         $selectedYear = $request->query('year', (string) $today->year);
 
-        $historiqueQuery = DemandeConge::with(['decidedBy', 'user'])
+        $historiqueQuery = DemandeConge::with(['decidedBy', 'cancelledBy', 'user'])
             ->where('user_id', $user->id)
             ->where('end_date', '<', $today);
 
@@ -101,7 +104,7 @@ class CongeController extends Controller
 
     public function generatePDF($id)
     {
-        $conge = DemandeConge::with(['user', 'decidedBy'])->findOrFail($id);
+        $conge = DemandeConge::with(['user', 'decidedBy', 'cancelledBy'])->findOrFail($id);
 
         $conge->formattedStartDate = Carbon::parse($conge->start_date)->translatedFormat('d M Y');
         $conge->formattedEndDate = Carbon::parse($conge->end_date)->translatedFormat('d M Y');
@@ -175,5 +178,27 @@ class CongeController extends Controller
         $conge->delete();
 
         return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été supprimée.');
+    }
+
+    /**
+     * Annule une demande de congé déjà envoyée ou acceptée.
+     * Supprime également en cascade les jours du planning marqués
+     * comme congé liés à cette demande.
+     */
+    public function cancel($id): RedirectResponse
+    {
+        $conge = DemandeConge::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->whereIn('status', ['envoyee', 'acceptee'])
+            ->firstOrFail();
+
+        if (Carbon::parse($conge->start_date)->startOfDay()->lte(Carbon::today())) {
+            return to_route('mes-conges.index')
+                ->with('error', 'Impossible d\'annuler une demande dont les jours de congé ont déjà commencé.');
+        }
+
+        $this->cancellationService->cancel($conge, auth()->id());
+
+        return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été annulée.');
     }
 }

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 8.5px; color: #111; }
+        /* Augmentation globale : 8.5px -> 11px pour améliorer la lisibilité papier */
+        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; }
 
         /* Marges gauche/droite/bas via wrapper */
         .wrapper { padding: 0 10mm 10mm 10mm; }
@@ -12,7 +13,7 @@
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td {
             border: 1px solid #444;
-            padding: 2px 3px;
+            padding: 3px 4px;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
@@ -23,7 +24,7 @@
         .thead-title {
             border: none;
             background: #ffffff;
-            font-size: 12px;
+            font-size: 15px;
             font-weight: bold;
             text-align: center;
             padding: 12mm 0 5px 0;
@@ -31,20 +32,20 @@
         thead th {
             background-color: #fff2cc;
             font-weight: bold;
-            font-size: 8.5px;
-            height: 30px;
+            font-size: 11px;
+            height: 34px;
         }
 
-        .col-name { width: 105px; text-align: left; }
-        .col-soc  { width: 52px; }
+        .col-name { width: 110px; text-align: left; }
+        .col-soc  { width: 56px; }
 
         /* Ligne séparateur de département */
         .dept-row td {
             font-weight: bold;
-            font-size: 9px;
+            font-size: 12px;
             text-align: left;
-            padding: 2px 5px;
-            height: 14px;
+            padding: 3px 6px;
+            height: 16px;
         }
 
         /* Couleurs département */
@@ -58,19 +59,19 @@
         .holiday-cell   { background-color: #99f6e4; color: #134e4a; font-weight: bold; }
         .absent-cell    { background-color: #d0cece; }
 
-        /* Texte statut */
-        .status-bureau   { font-weight: normal; }
-        .status-domicile { color: #008000; font-weight: bold; }
-        .status-absent   { color: #cc0000; font-weight: bold; }
+        /* Texte statut — la cellule jour utilise la taille body (11px), en gras pour les statuts marquants. */
+        .status-bureau   { font-weight: normal; font-size: 11px; }
+        .status-domicile { color: #008000; font-weight: bold; font-size: 11px; }
+        .status-absent   { color: #cc0000; font-weight: bold; font-size: 11px; }
 
-        .times       { font-size: 7px; }
-        .conge-label { font-size: 7px; font-style: italic; }
-        .soc-text    { font-size: 6px; text-align: left; }
-        .phone-text  { font-size: 7px; }
-        .fixe-text   { font-size: 7px; color: #cc0000; font-weight: bold; }
-        .empty-cell  { color: #bbb; }
+        .times       { font-size: 10px; }
+        .conge-label { font-size: 10px; font-style: italic; }
+        .soc-text    { font-size: 8px; text-align: center; }
+        .phone-text  { font-size: 10px; }
+        .fixe-text   { font-size: 10px; color: #cc0000; font-weight: bold; }
+        .empty-cell  { color: #bbb; font-size: 11px; }
 
-        .user-row td { height: 38px; }
+        .user-row td { height: 46px; }
     </style>
 </head>
 <body>
@@ -91,7 +92,7 @@
                         {{ mb_strtoupper($day->translatedFormat('l')) }}<br>
                         {{ $day->format('d/m/Y') }}
                         @if($isHoliday)
-                            <br><span style="font-size:6.5px;font-style:italic;">{{ $holidays[$day->toDateString()] }}</span>
+                            <br><span style="font-size:9px;font-style:italic;">{{ $holidays[$day->toDateString()] }}</span>
                         @endif
                     </th>
                 @endforeach
@@ -133,7 +134,7 @@
                             @if($isHoliday)
                                 <td class="holiday-cell">
                                     JOUR FÉRIÉ<br>
-                                    <span style="font-size:6.5px;font-style:italic;">{{ $holidays[$dateStr] }}</span>
+                                    <span style="font-size:9px;font-style:italic;">{{ $holidays[$dateStr] }}</span>
                                 </td>
 
                             @elseif($entry)

@@ -12,10 +12,11 @@ class DemandeConge extends Model
 
     protected $table = 'demande_conge';
 
-    protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status', 'decided_by', 'decided_at'];
+    protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status', 'decided_by', 'decided_at', 'cancelled_at', 'cancelled_by'];
 
     protected $casts = [
         'decided_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'nb_jours' => 'float',
     ];
 
@@ -32,5 +33,10 @@ class DemandeConge extends Model
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 }

@@ -81,7 +81,7 @@ class AdminConges extends Component
     {
         Carbon::setLocale('fr');
 
-        $query = DemandeConge::with(['user', 'decidedBy'])->orderBy('created_at', 'desc');
+        $query = DemandeConge::with(['user', 'decidedBy', 'cancelledBy'])->orderBy('created_at', 'desc');
 
         if ($this->filter !== 'toutes') {
             $query->where('status', $this->filter);

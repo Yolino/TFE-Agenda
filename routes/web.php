@@ -69,6 +69,7 @@ Route::prefix('/mes-conges')->controller(CongeController::class)->name('mes-cong
     Route::put('/update/{id}', 'update')->name('update');
     Route::get('/send/{id}', 'send')->name('send');
     Route::get('/destroy/{id}', 'destroy')->name('destroy');
+    Route::get('/cancel/{id}', 'cancel')->name('cancel');
     Route::get('/pdf/{id}', 'generatePDF')->name('pdf');
 });
 

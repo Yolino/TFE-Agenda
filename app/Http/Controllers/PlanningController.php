@@ -11,10 +11,15 @@ use App\Models\Planning;
 use App\Models\PlanningTemplate;
 use App\Models\User;
 use App\Services\PlanningLockService;
+use App\Services\CongeCancellationService;
 use Carbon\Carbon;
 
 class PlanningController extends Controller
 {
+    public function __construct(private CongeCancellationService $cancellationService)
+    {
+    }
+
     public function index(Request $request): View
     {
         $currentYear = Carbon::now()->year;
@@ -222,6 +227,41 @@ class PlanningController extends Controller
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
         }
 
+        // Si on modifie un jour adossé à une demande de congé : annulation cascade
+        // de la demande + suppression de tous les jours liés (la tuile est ensuite
+        // recréée selon les nouvelles données).
+        if ($entry->demande_conge_id) {
+            $newUserId = (int) $credentials['user_id'];
+            $newDate = $credentials['date'];
+            $newStatus = $credentials['status'] ?? null;
+
+            // L'admin peut "réécrire" la tuile en gardant le même statut de congé :
+            // dans ce cas, on ne casse pas la demande sous-jacente.
+            $stillSameCongeContext = $entry->user_id === $newUserId
+                && $entry->date === $newDate
+                && in_array($newStatus, ['conge', 'recup', 'css'], true)
+                && Planning::STATUS_MAP[$newStatus] === $entry->status_id;
+
+            if (! $stillSameCongeContext) {
+                $this->cancellationService->cancelFromPlanning($entry, auth()->id());
+
+                Planning::create([
+                    'user_id' => $newUserId,
+                    'date' => $newDate,
+                    'status_id' => Planning::STATUS_MAP[$newStatus] ?? null,
+                    'start_time_morning' => $credentials['start_time'] ?? null,
+                    'end_time_morning' => $credentials['end_time'] ?? null,
+                    'start_time_afternoon' => $credentials['start_time_afternoon'] ?? null,
+                    'end_time_afternoon' => $credentials['end_time_afternoon'] ?? null,
+                ]);
+
+                return response()->json([
+                    'message' => 'Modification réussie. La demande de congé associée a été annulée.',
+                    'conge_cancelled' => true,
+                ], 200);
+            }
+        }
+
         $entry->update([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
@@ -243,6 +283,18 @@ class PlanningController extends Controller
 
         if (! PlanningLockService::isDateEditable($entry->date)) {
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
+        }
+
+        // Si la tuile supprimée est rattachée à une demande de congé,
+        // on annule la demande complète : cela supprime également les autres
+        // jours liés via le service.
+        if ($entry->demande_conge_id) {
+            $this->cancellationService->cancelFromPlanning($entry, auth()->id());
+
+            return response()->json([
+                'message' => 'Suppression réussie. La demande de congé associée a été annulée.',
+                'conge_cancelled' => true,
+            ], 200);
         }
 
         $entry->delete();
