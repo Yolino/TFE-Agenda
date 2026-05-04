@@ -59,7 +59,8 @@ class AdminController extends Controller
         $selectedWeek = $request->input('week', now()->format('W'));
         $selectedYear = $request->input('year', now()->year);
 
-        $users = User::where('actif', true)->get();
+        $users = User::with('planningTemplates')->where('actif', true)->get();
+        $usersById = $users->keyBy('id');
 
         $daysInWeek = collect(range(1, 6))->map(function ($dayOffset) use ($selectedYear, $selectedWeek) {
             return Carbon::now()->setISODate($selectedYear, $selectedWeek, $dayOffset);
@@ -83,25 +84,28 @@ class AdminController extends Controller
             $holidays += $this->belgianHolidays($y);
         }
 
-        $planningEntries = $users->map(function ($user) use ($daysInWeek, $holidays) {
-            $entries = Planning::where('user_id', $user->id)
-                ->whereIn('date', $daysInWeek->map->toDateString())
-                ->with('demandeConge')
-                ->get()
-                ->keyBy('date');
+        $dateStrings = $daysInWeek->map->toDateString();
 
+        $allEntriesByUser = Planning::whereIn('date', $dateStrings)
+            ->whereIn('user_id', $users->pluck('id'))
+            ->with('demandeConge')
+            ->get()
+            ->groupBy('user_id');
+
+        $planningEntries = collect();
+
+        foreach ($users as $user) {
+            $userEntriesByDate = ($allEntriesByUser->get($user->id) ?? collect())->keyBy('date');
             $templatesByDay = $user->planningTemplates->keyBy('day_of_week');
 
             foreach ($daysInWeek as $day) {
                 $dateStr = $day->toDateString();
 
-                // Jour férié → on ne touche pas
                 if (isset($holidays[$dateStr])) {
                     continue;
                 }
 
-                // Jour déjà rempli dans Mon Planning → on ne touche pas
-                if ($entries->has($dateStr)) {
+                if ($userEntriesByDate->has($dateStr)) {
                     continue;
                 }
 
@@ -121,21 +125,21 @@ class AdminController extends Controller
                     'end_time_afternoon'   => $template->end_time_afternoon,
                 ]);
 
-                $entries->put($dateStr, $new->load('demandeConge'));
+                $userEntriesByDate->put($dateStr, $new->load('demandeConge'));
             }
 
-            return $entries->values();
-        })->flatten();
+            $planningEntries = $planningEntries->merge($userEntriesByDate->values());
+        }
 
-        $planningEntries = $planningEntries->filter(function ($entry) {
-            return $entry && $entry->user && $entry->user->actif;
-        })->sort(function ($a, $b) {
-            $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $planningEntries = $planningEntries->sort(function ($a, $b) use ($usersById, $typeOrder) {
+            $userA = $usersById->get($a->user_id);
+            $userB = $usersById->get($b->user_id);
 
-            $typeComparison = $typeOrder[$a->user->type] <=> $typeOrder[$b->user->type];
+            $typeComparison = ($typeOrder[$userA->type] ?? 99) <=> ($typeOrder[$userB->type] ?? 99);
 
             if ($typeComparison === 0) {
-                return strcmp($a->user->name, $b->user->name);
+                return strcmp($userA->name, $userB->name);
             }
 
             return $typeComparison;
@@ -176,9 +180,9 @@ class AdminController extends Controller
 
         $allSheetsHtml = [];
 
+        $userCount = User::where('actif', true)->count();
         foreach ($spreadsheet->getAllSheets() as $sheetIndex => $sheet) {
             $highestColumn = $sheetIndex === 0 ? 'N' : 'N';
-            $userCount = User::where('actif', true)->count();
             $highestRow = $sheetIndex === 0 ? $userCount + 1 : 11;
 
             $htmlContent = '<table border="1" style="border-collapse: collapse; width: 100%; font-size: 10px;">';
@@ -268,6 +272,7 @@ class AdminController extends Controller
         });
 
         $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
+            ->with('user')
             ->get()
             ->sort(function ($a, $b) {
                 $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
@@ -349,6 +354,8 @@ class AdminController extends Controller
             $startRow = $row;
 
             foreach ($entriesByType->groupBy('user.id') as $userId => $entriesByUser) {
+                $user = $entriesByUser->first()->user;
+
                 $typeLabel = match ($type) {
                     'B' => 'Salaire',
                     'S' => 'Secrétariat',
@@ -364,19 +371,19 @@ class AdminController extends Controller
                     ],
                 ]);
                 $sheet->getStyle('A' . $row)->getAlignment()->setTextRotation(90);
-                $sheet->setCellValue('B' . $row, $entriesByUser->first()->user->name . ' ' . $entriesByUser->first()->user->firstname . "\n" . $entriesByUser->first()->user->phone . "\n" . $entriesByUser->first()->user->fixe);
+                $sheet->setCellValue('B' . $row, $user->name . ' ' . $user->firstname . "\n" . $user->phone . "\n" . $user->fixe);
                 $sheet->getStyle('B' . $row)->getAlignment()->setWrapText(true);
 
-                $societes = explode(',', $entriesByUser->first()->user->remarque);
+                $societes = explode(',', $user->remarque);
                 $sheet->setCellValue('C' . $row, implode("\n", $societes));
                 $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
                 $sheet->getStyle('C' . $row)->getFont()->setSize(5);
 
                 $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
-                $phoneStr = (string)($entriesByUser->first()->user->phone ?? '');
-                $richText->createText($entriesByUser->first()->user->name . ' ' . $entriesByUser->first()->user->firstname . "\n" . $phoneStr . "\n");
+                $phoneStr = (string)($user->phone ?? '');
+                $richText->createText($user->name . ' ' . $user->firstname . "\n" . $phoneStr . "\n");
 
-                $fixeStr = (string)($entriesByUser->first()->user->fixe ?? '');
+                $fixeStr = (string)($user->fixe ?? '');
                 if (!empty($fixeStr)) {
                     $fixeText = $richText->createTextRun($fixeStr);
                     $fixeText->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
@@ -546,6 +553,7 @@ class AdminController extends Controller
         });
 
         $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
+            ->with('user')
             ->get()
             ->sort(function ($a, $b) {
                 $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];

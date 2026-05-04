@@ -13,16 +13,38 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/8cfad572d3.js" crossorigin="anonymous"></script>
-    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script>
+        // Redéfinit Swal globalement avec un mixin qui force la visibilité des boutons
+        // (fix conflit Tailwind/DaisyUI qui remet background-color: transparent sur les <button>)
+        document.addEventListener('DOMContentLoaded', function () {
+            window.Swal = Swal.mixin({
+                didOpen: function (popup) {
+                    popup.querySelectorAll('.swal2-confirm, .swal2-cancel, .swal2-deny').forEach(function (btn) {
+                        btn.style.setProperty('opacity', '1', 'important');
+                        btn.style.setProperty('visibility', 'visible', 'important');
+                        btn.style.setProperty('color', 'white', 'important');
+                        // Applique un background par défaut seulement si SweetAlert n'en a pas déjà mis un
+                        if (!btn.style.background && !btn.style.backgroundColor) {
+                            if (btn.classList.contains('swal2-confirm')) btn.style.backgroundColor = '#3085d6';
+                            if (btn.classList.contains('swal2-cancel'))  btn.style.backgroundColor = '#6b7280';
+                            if (btn.classList.contains('swal2-deny'))    btn.style.backgroundColor = '#dd6b55';
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
 
 <body class="font-agenda flex min-h-screen bg-gray-100" x-data="{ isSidebarOpen: true }" @toggle-sidebar.window="isSidebarOpen = !isSidebarOpen">
-    @if(!Route::currentRouteNamed('auth.index'))
+    @auth
     @include('partials.sidebar')
-    @endif
+    @endauth
 
     <div class="w-screen">
         @yield('content')

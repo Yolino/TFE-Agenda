@@ -3,11 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\NewAccountSetPassword;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -22,6 +24,9 @@ class User extends Authenticatable
         'name',
         'firstname',
         'email',
+        'phone',
+        'fixe',
+        'remarque',
         'role',
         'type',
         'password',
@@ -63,5 +68,15 @@ class User extends Authenticatable
     public function is_admin(): bool
     {
         return $this->role === 'A';
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPassword($token));
+    }
+
+    public function sendNewAccountNotification(string $token): void
+    {
+        $this->notify(new NewAccountSetPassword($token));
     }
 }

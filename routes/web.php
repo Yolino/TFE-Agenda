@@ -37,16 +37,15 @@ Route::prefix('/')->controller(AuthController::class)->name('auth.')->group(func
 // PROFILE
 Route::prefix('/')->controller(ProfileController::class)->name('profile.')->middleware('auth')->group(function () {
     Route::get('mon-profile', 'show')->name('show');
-    Route::patch('mon-profile', 'update')->name('update');
     Route::post('update-planning', 'updatePlanning')->name('updatePlanning');
 });
 
 // PASSWORD
 Route::prefix('/')->controller(PasswordController::class)->name('password.')->middleware('guest')->group(function () {
-    Route::get('forgot-password', 'request')->name('request');
-    Route::post('forgot-password', 'email')->name('email');
-    Route::get('reset-password/{token}', 'reset')->name('reset');
-    Route::post('reset-password', 'update')->name('update');
+    Route::get('mot-de-passe-oublie', 'request')->name('request');
+    Route::post('mot-de-passe-oublie', 'email')->name('email');
+    Route::get('reinitialiser/{token}', 'reset')->name('reset');
+    Route::post('reinitialiser', 'update')->name('update');
 });
 
 // PLANNING

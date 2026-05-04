@@ -2,10 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Gate;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +27,20 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-planning', function (User $user, int $targetUserId) {
             return $user->id === $targetUserId || $user->is_admin();
+        });
+
+        ResetPassword::toMailUsing(function (object $notifiable, string $token) {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            return (new \Illuminate\Notifications\Messages\MailMessage)
+                ->subject('Réinitialisation de votre mot de passe — ' . config('app.name'))
+                ->view('emails.reset-password', [
+                    'url'           => $url,
+                    'expireMinutes' => config('auth.passwords.users.expire'),
+                ]);
         });
     }
 }

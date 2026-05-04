@@ -12,6 +12,13 @@
                     <p class="text-sm text-base-content/60 mt-1">Connectez-vous à votre espace Agenda</p>
                 </div>
 
+                @if(session('success'))
+                <div role="alert" class="alert alert-success mb-4 text-sm">
+                    <i class="fa-duotone fa-circle-check"></i>
+                    <span>{{ session('success') }}</span>
+                </div>
+                @endif
+
                 @error('errorsCredentials')
                 <div role="alert" class="alert alert-error mb-4 text-sm">
                     <i class="fa-duotone fa-circle-exclamation"></i>
