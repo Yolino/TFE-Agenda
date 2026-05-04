@@ -41,6 +41,7 @@
             <a href="{{ route('planning.export', ['week' => $selectedWeek, 'year' => $selectedYear]) }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 <i class="fa-solid fa-file-excel mr-1"></i> Télécharger en Excel
             </a>
+            <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" />
         </div>
 
         @php

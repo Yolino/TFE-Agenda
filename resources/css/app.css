@@ -7,3 +7,14 @@
         @apply border border-2 border-dashed border-secondary p-7 mb-4;
     }
 }
+
+/* Fix Tailwind preflight qui remet background-color: transparent sur les boutons */
+.swal2-confirm,
+.swal2-cancel,
+.swal2-deny {
+    color: #fff !important;
+}
+
+.swal2-container {
+    z-index: 99999 !important;
+}

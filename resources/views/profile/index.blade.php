@@ -1,167 +1,170 @@
 @extends("app")
-@section("title", "Mon profile - E-Gestione")
+@section("title", "Mon profil - E-Gestione")
 
 @section("content")
 @include("partials.nav")
-<div class="p-4">
+
+<div class="p-4 max-w-6xl mx-auto space-y-6">
+
     @include('partials.flash')
+
+    {{-- En-tête --}}
     <div class="card-eg">
-        <h1 class="text-4xl font-medium">Mon profile</h1>
+        <h1 class="text-3xl font-bold">Mon profil</h1>
     </div>
+
+    {{-- Carte profil --}}
     <div class="card-eg">
-        <div class="flex gap-4">
-            <div class=" mr-5">
-                <div class="w-28 h-28 rounded-full bg-accent relative overflow-hidden">
-                    <!-- Photo de profil  -->
-                    <div class="absolute inset-0 flex items-center justify-center bg-black text-white text-xl bg-opacity-60 opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-                        <i class="fa-solid fa-pencil"></i>
+        <div class="flex gap-6 items-start">
+
+            {{-- Avatar --}}
+            <div class="flex-shrink-0">
+                <div class="w-24 h-24 rounded-full bg-accent relative overflow-hidden shadow-md">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black text-white text-sm bg-opacity-60 opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                        <i class="fa-solid fa-pencil text-lg"></i>
                     </div>
-                    <div class="flex items-center justify-center h-full font-bold">
-                        {{ auth()->user()->firstname[0] . auth()->user()->name[0] }}
-                        <!-- <img src="/images/stock/photo-1534528741775-53994a69daeb.jpg" /> -->
+                    <div class="flex items-center justify-center h-full font-bold text-2xl select-none">
+                        {{ strtoupper(auth()->user()->firstname[0] . auth()->user()->name[0]) }}
                     </div>
                 </div>
+                <div class="text-center mt-2">
+                    <span class="badge {{ auth()->user()->is_admin() ? 'badge-error' : 'badge-info' }} badge-sm">
+                        {{ auth()->user()->is_admin() ? 'Admin' : 'Utilisateur' }}
+                    </span>
+                </div>
             </div>
-            <div class="w-4/5">
-                <form action="" method="post" enctype="multipart/form-data">
-                    @method('PATCH')
-                    @csrf
-                    <div class="flex flex-col gap-5">
-                        <div class="flex flex-col">
-                            <label for="firstname" class="uppercase text-sm font-bold mb-2">Prénom</label>
-                            <input type="text" placeholder="" id="firstname" class="input w-full max-w-md" name="firstname" value="{{ auth()->user()->firstname }}" />
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="name" class="uppercase text-sm font-bold mb-2">Nom</label>
-                            <input type="text" placeholder="" id="name" class="input w-full max-w-md" name="name" value="{{ auth()->user()->name }}" />
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="email" class="uppercase text-sm font-bold mb-2">Email</label>
-                            <input type="email" placeholder="" id="email" class="input w-full max-w-md" name="email" value="{{ auth()->user()->email }}" />
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="password" class="uppercase text-sm font-bold mb-2">Mot de passe</label>
-                            <input type="password" placeholder="" id="password" class="input w-full max-w-md" name="password" value="" />
-                        </div>
-                        <div class="flex flex-col">
-                            <button class="btn btn-primary w-full max-w-md">Sauvegarder</button>
-                        </div>
-                    </div>
-                </form>
+
+            {{-- Contenu Livewire (infos + boutons + modale) --}}
+            <div class="flex-1">
+                @livewire('edit-profile')
             </div>
         </div>
+    </div>
 
-        <form action="{{ route('profile.updatePlanning') }}" method="post" class="mt-10">
-            <div class="grid grid-cols-7 gap-4 mt-5" x-data="{ selectedType: Array(7).fill('bureau') }">
-                @csrf
-                @method('POST')
-                @php
-                $weekDays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-                @endphp
+    {{-- Section planning prédéfini --}}
+    <div class="card-eg">
+        <h2 class="text-xl font-bold mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-week text-primary"></i>
+            Mon horaire prédéfini
+        </h2>
+        <p class="text-sm text-gray-500 mb-5">
+            Cet horaire sert de modèle de base pour remplir votre planning hebdomadaire.
+        </p>
+
+        <form action="{{ route('profile.updatePlanning') }}" method="post" id="planning-form">
+            @csrf
+            @method('POST')
+
+            @php
+            $weekDays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+            $noTimeStatuses = ['recup', 'conge', 'css', 'indisponible', 'neant'];
+            @endphp
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 items-start">
                 @foreach ($weekDays as $index => $day)
                 @php
-                $dayData = $planning->{$day} ?? '';
-                $times = explode(',', $dayData);
+                    $dayData         = $planning->{$day} ?? '';
+                    $times           = explode(',', $dayData);
+                    $morning_start   = isset($times[0]) && $times[0] !== '' ? (explode('-', $times[0])[0] ?? '') : '';
+                    $morning_end     = isset($times[0]) && $times[0] !== '' ? (explode('-', $times[0])[1] ?? '') : '';
+                    $afternoon_start = isset($times[1]) && $times[1] !== '' ? (explode('-', $times[1])[0] ?? '') : '';
+                    $afternoon_end   = isset($times[1]) && $times[1] !== '' ? (explode('-', $times[1])[1] ?? '') : '';
+                    $status          = $planning->{$day . '_status'} ?? 'bureau';
 
-                $morning_start = isset($times[0]) && !empty($times[0]) ? explode('-', $times[0])[0] : '';
-                $morning_end = isset($times[0]) && !empty($times[0]) ? explode('-', $times[0])[1] : '';
-                $afternoon_start = isset($times[1]) && !empty($times[1]) ? explode('-', $times[1])[0] : '';
-                $afternoon_end = isset($times[1]) && !empty($times[1]) ? explode('-', $times[1])[1] : '';
-
-                $status = $planning->{$day . '_status'} ?? 'bureau';
+                    $dayLabels  = ['lundi'=>'Lun','mardi'=>'Mar','mercredi'=>'Mer','jeudi'=>'Jeu','vendredi'=>'Ven','samedi'=>'Sam','dimanche'=>'Dim'];
+                    $isWeekend  = in_array($day, ['samedi', 'dimanche']);
+                    $showTimes  = !in_array($status, $noTimeStatuses);
                 @endphp
 
-                <div class="">
-                    <div class="mb-2 text-center">
-                        <strong>{{ ucfirst($day) }}</strong>
+                <div x-data="{ showTimes: {{ $showTimes ? 'true' : 'false' }} }"
+                     class="rounded-xl border border-base-200 shadow-sm {{ $isWeekend ? 'bg-base-200' : 'bg-base-100' }} p-3 space-y-2">
+
+                    {{-- En-tête jour --}}
+                    <div class="text-center">
+                        <p class="font-bold text-sm uppercase tracking-widest {{ $isWeekend ? 'text-gray-400' : '' }}">
+                            {{ $dayLabels[$day] }}
+                        </p>
+                        <p class="text-xs text-gray-400 capitalize">{{ $day }}</p>
                     </div>
-                    <div class="mb-2">
-                        <select id="{{ $day }}_type" class="input w-full" onchange="toggleTimeInputs('{{ $day }}')" name="planning[{{ $day }}][status]">
-                            <option value="bureau" {{ $status == 'bureau' ? 'selected' : '' }}>Bureau</option>
-                            <option value="tele_travail" {{ $status == 'tele_travail' ? 'selected' : '' }}>Télétravail</option>
-                            <option value="recup" {{ $status == 'recup' ? 'selected' : '' }}>Récup</option>
-                            <option value="conge" {{ $status == 'conge' ? 'selected' : '' }}>Congé</option>
-                            <option value="css" {{ $status == 'css' ? 'selected' : '' }}>CSS</option>
-                            <option value="indisponible" {{ $status == 'indisponible' ? 'selected' : '' }}>Indisponible</option>
-                            <option value="neant" {{ $status == 'neant' ? 'selected' : '' }}>---</option>
-                        </select>
+
+                    {{-- Sélecteur de statut (style natif, toujours lisible) --}}
+                    <select @change="showTimes = ['bureau', 'tele_travail'].includes($event.target.value)"
+                            name="planning[{{ $day }}][status]"
+                            class="w-full rounded-lg border border-gray-300 bg-white text-gray-800 text-sm py-1.5 px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
+                        <option value="bureau"       @selected($status === 'bureau')>Bureau</option>
+                        <option value="tele_travail" @selected($status === 'tele_travail')>Télétravail</option>
+                        <option value="recup"        @selected($status === 'recup')>Récup</option>
+                        <option value="conge"        @selected($status === 'conge')>Congé</option>
+                        <option value="css"          @selected($status === 'css')>CSS</option>
+                        <option value="indisponible" @selected($status === 'indisponible')>Indisponible</option>
+                        <option value="neant"        @selected($status === 'neant')>---</option>
+                    </select>
+
+                    {{-- Horaires (masqués pour récup / congé / etc.) --}}
+                    <div x-show="showTimes" class="space-y-2">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Matin</p>
+                            <input type="time" name="planning[{{ $day }}][morning_start]" value="{{ $morning_start }}"
+                                   class="w-full rounded border border-gray-300 text-sm py-1 px-1.5 mb-1" />
+                            <input type="time" name="planning[{{ $day }}][morning_end]" value="{{ $morning_end }}"
+                                   class="w-full rounded border border-gray-300 text-sm py-1 px-1.5" />
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Après-midi</p>
+                            <input type="time" name="planning[{{ $day }}][afternoon_start]" value="{{ $afternoon_start }}"
+                                   class="w-full rounded border border-gray-300 text-sm py-1 px-1.5 mb-1" />
+                            <input type="time" name="planning[{{ $day }}][afternoon_end]" value="{{ $afternoon_end }}"
+                                   class="w-full rounded border border-gray-300 text-sm py-1 px-1.5" />
+                        </div>
                     </div>
-                    <div id="{{ $day }}_time_inputs" class="mb-2">
-                        <label class="mt-3 mb-1 inline-block">Matin :</label>
-                        <input type="time" class="input w-full mb-1" name="planning[{{ $day }}][morning_start]" value="{{ $morning_start }}" />
-                        <input type="time" class="input w-full" name="planning[{{ $day }}][morning_end]" value="{{ $morning_end }}" />
-                        <label class="mt-3 mb-1 inline-block">Après-midi :</label>
-                        <input type="time" class="input w-full mb-1" name="planning[{{ $day }}][afternoon_start]" value="{{ $afternoon_start }}" />
-                        <input type="time" class="input w-full" name="planning[{{ $day }}][afternoon_end]" value="{{ $afternoon_end }}" />
-                    </div>
+
                 </div>
                 @endforeach
-
             </div>
-            <div class="mt-4">
-                <button class="btn btn-primary w-full max-w-md">Sauvegarder le Planning</button>
+
+            <div class="mt-5">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>
+                    Sauvegarder l'horaire
+                </button>
             </div>
         </form>
     </div>
+
 </div>
 @endsection
 
 @push("scripts")
-@vite("resources/js/profile.js")
 <script>
-    function toggleTimeInputs(day) {
-        const typeElement = document.getElementById(day + '_type');
-        const timeInputsDiv = document.getElementById(day + '_time_inputs');
+    document.getElementById('planning-form')?.addEventListener('submit', function (event) {
+        const workStatuses = ['bureau', 'tele_travail'];
+        const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+        let errors = [];
 
-        if (typeElement) {
-            const type = typeElement.value;
-            if (type === 'recup' || type === 'conge' || type === 'css' || type === 'indisponible') {
-                timeInputsDiv.style.display = 'none';
-            } else {
-                timeInputsDiv.style.display = 'block';
+        days.forEach(day => {
+            const statusEl = document.querySelector(`select[name='planning[${day}][status]']`);
+            if (!statusEl || !workStatuses.includes(statusEl.value)) return;
+
+            const ms = document.querySelector(`input[name='planning[${day}][morning_start]']`)?.value;
+            const me = document.querySelector(`input[name='planning[${day}][morning_end]']`)?.value;
+            const as = document.querySelector(`input[name='planning[${day}][afternoon_start]']`)?.value;
+            const ae = document.querySelector(`input[name='planning[${day}][afternoon_end]']`)?.value;
+
+            if ((ms && !me) || (!ms && me)) {
+                errors.push(`Heures du matin incomplètes pour le ${day}.`);
             }
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(day => {
-            toggleTimeInputs(day);
+            if ((as && !ae) || (!as && ae)) {
+                errors.push(`Heures de l'après-midi incomplètes pour le ${day}.`);
+            }
         });
 
-        const planningForm = document.querySelector("form[action='{{ route('profile.updatePlanning') }}']");
-        if (planningForm) {
-            planningForm.addEventListener('submit', function(event) {
-                let isValid = true;
-                let errorMessage = '';
-
-                ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(day => {
-                    const morningStart = document.querySelector(`input[name='planning[${day}][morning_start]']`);
-                    const morningEnd = document.querySelector(`input[name='planning[${day}][morning_end]']`);
-                    const afternoonStart = document.querySelector(`input[name='planning[${day}][afternoon_start]']`);
-                    const afternoonEnd = document.querySelector(`input[name='planning[${day}][afternoon_end]']`);
-
-                    // Vérifiez les champs du matin
-                    if ((morningStart.value && !morningEnd.value) || (!morningStart.value && morningEnd.value)) {
-                        isValid = false;
-                        errorMessage += `Veuillez remplir correctement les heures du matin pour le ${day}.\n`;
-                    }
-
-                    // Vérifiez les champs de l'après-midi
-                    if ((afternoonStart.value && !afternoonEnd.value) || (!afternoonStart.value && afternoonEnd.value)) {
-                        isValid = false;
-                        errorMessage += `Veuillez remplir correctement les heures de l'après-midi pour le ${day}.\n`;
-                    }
-                });
-
-                if (!isValid) {
-                    event.preventDefault();
-                    Swal.fire({
-                        title: 'Erreur',
-                        text: errorMessage,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
+        if (errors.length > 0) {
+            event.preventDefault();
+            Swal.fire({
+                title: 'Erreur de saisie',
+                html: errors.map(e => `<div>• ${e}</div>`).join(''),
+                icon: 'error',
+                confirmButtonText: 'Corriger'
             });
         }
     });

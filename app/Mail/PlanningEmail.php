@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -13,26 +15,55 @@ class PlanningEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $fromAddress;
-    public $fromName;
-    public $subject;
-    public $attachmentPath;
-    public $dateRange;
+    public Carbon $dateFrom;
+    public Carbon $dateTo;
 
-    public function __construct($fromAddress, $fromName, $subject, $attachmentPath, $dateRange)
-    {
-        $this->fromAddress = $fromAddress;
-        $this->fromName = $fromName;
-        $this->subject = $subject;
-        $this->attachmentPath = $attachmentPath;
-        $this->dateRange = $dateRange;
+    public function __construct(
+        public int $week,
+        public int $year,
+        public string $pdfPath,
+        public string $excelPath,
+        public ?string $senderName = null,
+        public ?string $senderTitle = null,
+        public ?string $senderPhone = null,
+    ) {
+        Carbon::setLocale('fr');
+        $this->dateFrom = Carbon::now()->setISODate($year, $week, 1); // lundi
+        $this->dateTo   = Carbon::now()->setISODate($year, $week, 6); // samedi
     }
 
-    public function build()
+    public function envelope(): Envelope
     {
-        return $this->view('emails.planning')
-            ->from($this->fromAddress, $this->fromName)
-            ->subject($this->subject)
-            ->attach($this->attachmentPath);
+        $from = Carbon::now()->setISODate($this->year, $this->week, 1)->locale('fr')->isoFormat('D MMMM');
+        $to   = Carbon::now()->setISODate($this->year, $this->week, 6)->locale('fr')->isoFormat('D MMMM YYYY');
+
+        return new Envelope(
+            from: new Address(
+                config('mail.from.address'),
+                $this->senderName ?? config('mail.from.name'),
+            ),
+            subject: 'Planning Crocheux — du ' . $from . ' au ' . $to,
+        );
+    }
+
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.planning',
+        );
+    }
+
+    public function attachments(): array
+    {
+        $label = sprintf('S%02d-%d', $this->week, $this->year);
+
+        return [
+            Attachment::fromPath($this->pdfPath)
+                ->as('planning_' . $label . '.pdf')
+                ->withMime('application/pdf'),
+            Attachment::fromPath($this->excelPath)
+                ->as('planning_' . $label . '.xlsx')
+                ->withMime('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+        ];
     }
 }

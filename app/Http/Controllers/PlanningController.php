@@ -136,6 +136,11 @@ class PlanningController extends Controller
             array_map(fn($s) => Planning::STATUS_MAP[$s] ?? null, $protectedStatuses)
         );
 
+        $existingEntries = Planning::where('user_id', $targetUserId)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get()
+            ->keyBy('date');
+
         while ($startDate->lte($endDate)) {
             if (! PlanningLockService::isDateEditable($startDate)) {
                 $startDate->addDay();
@@ -161,9 +166,7 @@ class PlanningController extends Controller
             }
 
             // Ne pas écraser un jour déjà rempli avec un statut protégé
-            $existing = Planning::where('user_id', $targetUserId)
-                ->where('date', $startDate->format('Y-m-d'))
-                ->first();
+            $existing = $existingEntries->get($startDate->format('Y-m-d'));
 
             if ($existing && in_array($existing->status_id, $protectedStatusIds)) {
                 $startDate->addDay();
