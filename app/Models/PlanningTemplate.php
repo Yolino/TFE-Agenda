@@ -10,6 +10,8 @@ class PlanningTemplate extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql';
+
     protected $table = 'planning_templates';
 
     protected $fillable = [

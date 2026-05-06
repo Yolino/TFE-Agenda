@@ -1,5 +1,5 @@
 @extends("app")
-@section("title", "Mon profil - E-Gestione")
+@section("title", "Mon profil")
 
 @section("content")
 @include("partials.nav")

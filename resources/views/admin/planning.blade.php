@@ -6,8 +6,13 @@
 <div class="p-4">
     @include('partials.flash')
 
-    <div class="card-eg">
-        <h1 class="text-4xl font-medium">Planning Crocheux</h1>
+    <div class="card-eg flex justify-between items-center">
+        <h1 class="text-4xl font-medium">
+            Planning {{ $currentAgence?->display_name ?? '— aucune agence' }}
+        </h1>
+        @if(auth()->user()->is_admin())
+            <livewire:agence-autocomplete :week="$selectedWeek" :year="$selectedYear" />
+        @endif
     </div>
 
     <div class="card-eg mt-4 p-4">
@@ -25,23 +30,29 @@
                 if ($nextWeek > $weeksInCurrentYear)     { $nextWeek = 1;                        $nextYear++;     }
             @endphp
 
-            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
+            @php
+                $agenceQs = $currentAgence ? '&agence_id=' . $currentAgence->id : '';
+                $exportParams = ['week' => $selectedWeek, 'year' => $selectedYear];
+                if ($currentAgence) { $exportParams['agence_id'] = $currentAgence->id; }
+            @endphp
+
+            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
                 <i class="fa-solid fa-arrow-left"></i> Semaine précédente
             </button>
             <h2 class="text-xl font-bold">Semaine {{ $selectedWeek }} - {{ $selectedYear }}</h2>
-            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
+            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
                 Semaine suivante <i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>
 
         <div class="flex justify-end mb-4 gap-2">
-            <a href="{{ route('planning.export.pdf', ['week' => $selectedWeek, 'year' => $selectedYear]) }}" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+            <a href="{{ route('planning.export.pdf', $exportParams) }}" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
                 <i class="fa-solid fa-file-pdf mr-1"></i> Télécharger en PDF
             </a>
-            <a href="{{ route('planning.export', ['week' => $selectedWeek, 'year' => $selectedYear]) }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            <a href="{{ route('planning.export', $exportParams) }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                 <i class="fa-solid fa-file-excel mr-1"></i> Télécharger en Excel
             </a>
-            <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" />
+            <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence?->id" />
         </div>
 
         @php
@@ -53,16 +64,18 @@
                 'autre' => 'Autre',
             ];
 
-            $typeOrder  = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
-            $typeLabels = ['B' => 'Salaire', 'S' => 'Secrétariat', 'C' => 'Comptabilité', 'I' => 'Informatique'];
+            $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
 
             $activeUsers = $users->where('actif', true)
                 ->sortBy([
-                    fn($a, $b) => ($typeOrder[$a->type] ?? 99) <=> ($typeOrder[$b->type] ?? 99),
+                    fn($a, $b) => ($typeOrder[$a->departements->first()?->letter] ?? 99) <=> ($typeOrder[$b->departements->first()?->letter] ?? 99),
                     fn($a, $b) => strcmp($a->name, $b->name),
                 ])
-                ->groupBy('type')
+                ->groupBy(fn($u) => $u->departements->first()?->letter ?? '?')
                 ->sortBy(fn($group, $type) => $typeOrder[$type] ?? 99);
+
+            $deptLabels = $users
+                ->mapWithKeys(fn($u) => [$u->departements->first()?->letter ?? '?' => $u->departements->first()?->nom ?? '—']);
         @endphp
 
         <div class="grid gap-1" style="grid-template-columns: minmax(120px,160px) repeat(6, 1fr);">
@@ -93,7 +106,7 @@
                     };
                 @endphp
                 <div class="col-span-7 {{ $deptBg }} font-bold text-sm px-3 py-1 border rounded mt-2">
-                    {{ $typeLabels[$type] ?? $type }}
+                    {{ $deptLabels[$type] ?? $type }}
                 </div>
 
                 {{-- Une ligne par utilisateur du groupe --}}
@@ -114,7 +127,7 @@
                             $bgClasses = 'bg-teal-200';
                             $textColorClasses = 'text-teal-900';
                         } elseif ($entry) {
-                            $bgClasses = match([$user->type ?? null, $entry->status != 'bureau']) {
+                            $bgClasses = match([$user->departements->first()?->letter, $entry->status != 'bureau']) {
                                 ['I', false] => 'bg-orange-100',
                                 ['I', true]  => 'bg-gray-400',
                                 ['C', false] => 'bg-sky-200',

@@ -14,14 +14,15 @@ return new class extends Migration
 
         Schema::table('demande_conge', function (Blueprint $table) {
             $table->timestamp('cancelled_at')->nullable()->after('decided_at');
-            $table->foreignId('cancelled_by')->nullable()->after('cancelled_at')->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('cancelled_by')->nullable()->after('cancelled_at')->comment('FK logique vers bti.users.id');
+            $table->index('cancelled_by');
         });
     }
 
     public function down(): void
     {
         Schema::table('demande_conge', function (Blueprint $table) {
-            $table->dropForeign(['cancelled_by']);
+            $table->dropIndex(['cancelled_by']);
             $table->dropColumn(['cancelled_at', 'cancelled_by']);
         });
 

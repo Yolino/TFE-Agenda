@@ -29,14 +29,10 @@ class PlanningController extends Controller
         $startTimeAfternoon = '13:00';
         $endTimeAfternoon = '16:30';
 
-        // Admin peut consulter le planning d'un autre utilisateur
-        $targetUserId = auth()->id();
-        $users = collect();
-
-        if (auth()->user()->is_admin()) {
-            $targetUserId = (int) $request->input('user_id', auth()->id());
-            $users = User::where('actif', true)->orderBy('name')->get();
-        }
+        // Admin peut consulter le planning d'un autre utilisateur (via UserAutocomplete)
+        $targetUserId = auth()->user()->is_admin()
+            ? (int) $request->input('user_id', auth()->id())
+            : auth()->id();
 
         Gate::authorize('manage-planning', $targetUserId);
 
@@ -85,7 +81,6 @@ class PlanningController extends Controller
             'endTimeAfternoon',
             'userEntries',
             'targetUserId',
-            'users',
             'firstEditableDate'
         ));
     }

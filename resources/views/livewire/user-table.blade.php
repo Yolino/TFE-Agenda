@@ -11,7 +11,7 @@
     </div>
 
     {{-- Filtres --}}
-    <div x-data="{ showStatusDropdown: false, showRoleDropdown: false, showTypeDropdown: false, statusTitle: 'Statut', roleTitle: 'Rôle', typeTitle: 'Type' }"
+    <div x-data="{ showStatusDropdown: false, showRoleDropdown: false, showAgenceDropdown: false, statusTitle: 'Statut', roleTitle: 'Rôle', agenceTitle: 'Agence' }"
          class="mb-4 flex flex-wrap gap-2">
 
         <div class="relative" x-cloak>
@@ -28,25 +28,24 @@
             <button class="btn btn-success btn-sm" @click="showRoleDropdown = !showRoleDropdown" x-text="roleTitle"></button>
             <div x-show="showRoleDropdown" x-transition.opacity @click.away="showRoleDropdown = false"
                  class="absolute bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 z-10 min-w-36">
-                <button wire:click.prevent="filterByRole(null)" @click="roleTitle = 'Tous'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Tous</button>
-                <button wire:click.prevent="filterByRole('A')" @click="roleTitle = 'Admins'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Admins</button>
-                <button wire:click.prevent="filterByRole('U')" @click="roleTitle = 'Utilisateurs'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Utilisateurs</button>
+                <button wire:click.prevent="filterByIsAdmin(null)" @click="roleTitle = 'Tous'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Tous</button>
+                <button wire:click.prevent="filterByIsAdmin('admin')" @click="roleTitle = 'Admins'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Admins</button>
+                <button wire:click.prevent="filterByIsAdmin('user')" @click="roleTitle = 'Utilisateurs'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Utilisateurs</button>
             </div>
         </div>
 
         <div class="relative" x-cloak>
-            <button class="btn btn-secondary btn-sm" @click="showTypeDropdown = !showTypeDropdown" x-text="typeTitle"></button>
-            <div x-show="showTypeDropdown" x-transition.opacity @click.away="showTypeDropdown = false"
-                 class="absolute bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 z-10 min-w-40">
-                <button wire:click.prevent="filterByType(null)" @click="typeTitle = 'Tous'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Tous</button>
-                <button wire:click.prevent="filterByType('I')" @click="typeTitle = 'Informatique'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Informatique</button>
-                <button wire:click.prevent="filterByType('S')" @click="typeTitle = 'Secrétariat'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Secrétariat</button>
-                <button wire:click.prevent="filterByType('B')" @click="typeTitle = 'Salaire'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Salaire</button>
-                <button wire:click.prevent="filterByType('C')" @click="typeTitle = 'Comptabilité'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Comptabilité</button>
-                <button wire:click.prevent="filterByType('G')" @click="typeTitle = 'Garage'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Garage</button>
-                <button wire:click.prevent="filterByType('V')" @click="typeTitle = 'Véhicule'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Véhicule</button>
-                <button wire:click.prevent="filterByType('N')" @click="typeTitle = 'Nettoyage'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Nettoyage</button>
-                <button wire:click.prevent="filterByType('O')" @click="typeTitle = 'Ouvrier'; showTypeDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Ouvrier</button>
+            <button class="btn btn-accent btn-sm" @click="showAgenceDropdown = !showAgenceDropdown" x-text="agenceTitle"></button>
+            <div x-show="showAgenceDropdown" x-transition.opacity @click.away="showAgenceDropdown = false"
+                 class="absolute bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 z-10 min-w-56 max-h-72 overflow-y-auto">
+                <button wire:click.prevent="filterByAgence(null)" @click="agenceTitle = 'Toutes'; showAgenceDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Toutes</button>
+                @foreach($agences as $agence)
+                    <button wire:click.prevent="filterByAgence({{ $agence->id }})"
+                            @click="agenceTitle = '{{ addslashes($agence->display_name) }}'; showAgenceDropdown = false"
+                            class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">
+                        {{ $agence->display_name }}
+                    </button>
+                @endforeach
             </div>
         </div>
     </div>
@@ -64,14 +63,9 @@
                         Email
                         @if($sortField === 'email') <span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
                     </th>
-                    <th class="cursor-pointer select-none" wire:click="sortBy('role')">
-                        Rôle
-                        @if($sortField === 'role') <span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
-                    </th>
-                    <th class="cursor-pointer select-none" wire:click="sortBy('type')">
-                        Type
-                        @if($sortField === 'type') <span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
-                    </th>
+                    <th>Rôle</th>
+                    <th>Département</th>
+                    <th>Agence</th>
                     <th class="text-center">Actions</th>
                 </tr>
             </thead>
@@ -81,15 +75,19 @@
                     <td class="font-medium">{{ $user->name }} {{ $user->firstname }}</td>
                     <td>{{ $user->email }}</td>
                     <td>
-                        <span class="badge {{ $user->role === 'A' ? 'badge-error' : 'badge-info' }} badge-sm">
-                            {{ $user->role === 'A' ? 'Admin' : 'Utilisateur' }}
+                        <span class="badge {{ $user->is_admin() ? 'badge-error' : 'badge-info' }} badge-sm">
+                            {{ $user->is_admin() ? 'Admin' : 'Utilisateur' }}
                         </span>
                     </td>
                     <td>
-                        @php
-                        $typeLabels = ['I'=>'Informatique','S'=>'Secrétariat','B'=>'Salaire','C'=>'Comptabilité','G'=>'Garage','V'=>'Véhicule','N'=>'Nettoyage','O'=>'Ouvrier'];
-                        @endphp
-                        {{ $typeLabels[$user->type] ?? $user->type }}
+                        {{ $user->departements->first()?->nom ?? '—' }}
+                    </td>
+                    <td>
+                        @forelse($user->agences as $agence)
+                            <span class="badge badge-ghost badge-sm">{{ $agence->display_name }}</span>
+                        @empty
+                            <span class="text-base-content/40 text-xs">—</span>
+                        @endforelse
                     </td>
                     <td class="text-center">
                         <button wire:click="editUser({{ $user->id }})" class="btn btn-primary btn-xs">
@@ -162,43 +160,46 @@
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="form-control">
-                            <label class="label"><span class="label-text font-semibold">Rôle *</span></label>
-                            <select wire:model.defer="role"
-                                    class="select select-bordered @error('role') select-error @enderror">
-                                <option value="">Sélectionner...</option>
-                                <option value="A">Admin</option>
-                                <option value="U">Utilisateur</option>
+                            <label class="label"><span class="label-text font-semibold">Agence *</span></label>
+                            <select wire:model.defer="agence_id"
+                                    class="select select-bordered @error('agence_id') select-error @enderror">
+                                <option value="">Sélectionner une agence...</option>
+                                @foreach($agences as $agence)
+                                    <option value="{{ $agence->id }}">{{ $agence->display_name }}</option>
+                                @endforeach
                             </select>
-                            @error('role') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('agence_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
-                            <label class="label"><span class="label-text font-semibold">Type *</span></label>
-                            <select wire:model.defer="type"
-                                    class="select select-bordered @error('type') select-error @enderror">
+                            <label class="label"><span class="label-text font-semibold">Département *</span></label>
+                            <select wire:model.defer="departement_id"
+                                    class="select select-bordered @error('departement_id') select-error @enderror">
                                 <option value="">Sélectionner...</option>
-                                <option value="I">Informatique</option>
-                                <option value="S">Secrétariat</option>
-                                <option value="B">Salaire</option>
-                                <option value="C">Comptabilité</option>
-                                <option value="G">Garage</option>
-                                <option value="V">Véhicule</option>
-                                <option value="N">Nettoyage</option>
-                                <option value="O">Ouvrier</option>
+                                @foreach($departements as $departement)
+                                    <option value="{{ $departement->id }}">{{ $departement->nom }}</option>
+                                @endforeach
                             </select>
-                            @error('type') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('departement_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label cursor-pointer">
+                            <span class="label-text font-semibold">Administrateur</span>
+                            <input type="checkbox" wire:model.defer="isAdmin" class="toggle toggle-error" />
+                        </label>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="form-control">
                             <label class="label"><span class="label-text">Téléphone</span></label>
-                            <input type="tel" wire:model.defer="phone" 
+                            <input type="tel" wire:model.defer="phone"
                                    class="input input-bordered @error('phone') input-error @enderror" />
                             @error('phone') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Fixe</span></label>
-                            <input type="tel" wire:model.defer="fixe" 
+                            <input type="tel" wire:model.defer="fixe"
                                    class="input input-bordered @error('fixe') input-error @enderror" />
                             @error('fixe') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
@@ -260,43 +261,46 @@
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="form-control">
-                            <label class="label"><span class="label-text font-semibold">Rôle *</span></label>
-                            <select wire:model.defer="selectedUser.role"
-                                    class="select select-bordered @error('selectedUser.role') select-error @enderror">
-                                <option value="">Sélectionner...</option>
-                                <option value="A">Admin</option>
-                                <option value="U">Utilisateur</option>
+                            <label class="label"><span class="label-text font-semibold">Agence *</span></label>
+                            <select wire:model.defer="selectedUser.agence_id"
+                                    class="select select-bordered @error('selectedUser.agence_id') select-error @enderror">
+                                <option value="">Sélectionner une agence...</option>
+                                @foreach($agences as $agence)
+                                    <option value="{{ $agence->id }}">{{ $agence->display_name }}</option>
+                                @endforeach
                             </select>
-                            @error('selectedUser.role') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.agence_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
-                            <label class="label"><span class="label-text font-semibold">Type *</span></label>
-                            <select wire:model.defer="selectedUser.type"
-                                    class="select select-bordered @error('selectedUser.type') select-error @enderror">
+                            <label class="label"><span class="label-text font-semibold">Département *</span></label>
+                            <select wire:model.defer="selectedUser.departement_id"
+                                    class="select select-bordered @error('selectedUser.departement_id') select-error @enderror">
                                 <option value="">Sélectionner...</option>
-                                <option value="I">Informatique</option>
-                                <option value="S">Secrétariat</option>
-                                <option value="B">Salaire</option>
-                                <option value="C">Comptabilité</option>
-                                <option value="G">Garage</option>
-                                <option value="V">Véhicule</option>
-                                <option value="N">Nettoyage</option>
-                                <option value="O">Ouvrier</option>
+                                @foreach($departements as $departement)
+                                    <option value="{{ $departement->id }}">{{ $departement->nom }}</option>
+                                @endforeach
                             </select>
-                            @error('selectedUser.type') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.departement_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label cursor-pointer">
+                            <span class="label-text font-semibold">Administrateur</span>
+                            <input type="checkbox" wire:model.defer="selectedUser.isAdmin" class="toggle toggle-error" />
+                        </label>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div class="form-control">
                             <label class="label"><span class="label-text">Téléphone</span></label>
-                            <input type="tel" wire:model.defer="selectedUser.phone" 
+                            <input type="tel" wire:model.defer="selectedUser.phone"
                                    class="input input-bordered @error('selectedUser.phone') input-error @enderror" />
                             @error('selectedUser.phone') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Fixe</span></label>
-                            <input type="tel" wire:model.defer="selectedUser.fixe" 
+                            <input type="tel" wire:model.defer="selectedUser.fixe"
                                    class="input input-bordered @error('selectedUser.fixe') input-error @enderror" />
                             @error('selectedUser.fixe') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
                         </div>

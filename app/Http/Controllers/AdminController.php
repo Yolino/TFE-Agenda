@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Planning;
+use App\Models\Agence;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Calculation\Calculation;
@@ -27,6 +29,25 @@ class AdminController extends Controller
     {
         $users = User::all();
         return view('admin.users', compact('users'));
+    }
+
+    /**
+     * Résout l'agence active : query string `agence_id` ou première agence du user connecté.
+     */
+    private function resolveCurrentAgenceId(Request $request): ?int
+    {
+        $fallback = $request->user()->agences->first()?->id;
+        return (int) $request->input('agence_id', $fallback) ?: null;
+    }
+
+    /**
+     * Renvoie les user_id liés à une agence via le pivot local agences_users.
+     */
+    private function userIdsInAgence(int $agenceId): \Illuminate\Support\Collection
+    {
+        return DB::connection('mysql')->table('agences_users')
+            ->where('agence_id', $agenceId)
+            ->pluck('user_id');
     }
 
     private function belgianHolidays(int $year): array
@@ -59,7 +80,16 @@ class AdminController extends Controller
         $selectedWeek = $request->input('week', now()->format('W'));
         $selectedYear = $request->input('year', now()->year);
 
-        $users = User::with('planningTemplates')->where('actif', true)->get();
+        $selectedAgenceId = $this->resolveCurrentAgenceId($request);
+        $currentAgence    = $selectedAgenceId ? Agence::with('societe')->find($selectedAgenceId) : null;
+
+        $users = $currentAgence
+            ? User::with(['planningTemplates', 'profile', 'departements'])
+                ->where('actif', true)
+                ->whereIn('id', $this->userIdsInAgence($currentAgence->id))
+                ->get()
+            : collect();
+
         $usersById = $users->keyBy('id');
 
         $daysInWeek = collect(range(1, 6))->map(function ($dayOffset) use ($selectedYear, $selectedWeek) {
@@ -136,7 +166,10 @@ class AdminController extends Controller
             $userA = $usersById->get($a->user_id);
             $userB = $usersById->get($b->user_id);
 
-            $typeComparison = ($typeOrder[$userA->type] ?? 99) <=> ($typeOrder[$userB->type] ?? 99);
+            $letterA = $userA->departements->first()?->letter;
+            $letterB = $userB->departements->first()?->letter;
+
+            $typeComparison = ($typeOrder[$letterA] ?? 99) <=> ($typeOrder[$letterB] ?? 99);
 
             if ($typeComparison === 0) {
                 return strcmp($userA->name, $userB->name);
@@ -152,6 +185,7 @@ class AdminController extends Controller
             'selectedYear'    => (int) $selectedYear,
             'holidays'        => $holidays,
             'users'           => $users,
+            'currentAgence'   => $currentAgence,
         ]);
     }
 
@@ -271,13 +305,22 @@ class AdminController extends Controller
             return now()->setISODate($selectedYear, $selectedWeek, $dayOffset);
         });
 
+        $selectedAgenceId = $this->resolveCurrentAgenceId($request);
+        $userIdsInAgence  = $selectedAgenceId
+            ? $this->userIdsInAgence($selectedAgenceId)
+            : collect();
+
         $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
-            ->with('user')
+            ->whereIn('user_id', $userIdsInAgence)
+            ->with(['user.profile', 'user.departements', 'user.agences.societe'])
             ->get()
+            ->filter(fn($entry) => $entry->user !== null)
             ->sort(function ($a, $b) {
                 $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+                $letterA = $a->user->departements->first()?->letter;
+                $letterB = $b->user->departements->first()?->letter;
 
-                $typeComparison = $typeOrder[$a->user->type] <=> $typeOrder[$b->user->type];
+                $typeComparison = ($typeOrder[$letterA] ?? 99) <=> ($typeOrder[$letterB] ?? 99);
 
                 if ($typeComparison === 0) {
                     return strcmp($a->user->name, $b->user->name);
@@ -296,7 +339,7 @@ class AdminController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('B1', 'Nom - Prénom');
-        $sheet->setCellValue('C1', 'Societes');
+        $sheet->setCellValue('C1', 'Agence');
         foreach ($daysInWeek as $index => $day) {
             $columnC = Coordinate::stringFromColumnIndex($index * 2 + 4);
             $columnD = Coordinate::stringFromColumnIndex($index * 2 + 5);
@@ -350,19 +393,13 @@ class AdminController extends Controller
         $sheet->getRowDimension(1)->setRowHeight(30);
 
         $row = 2;
-        foreach ($planningEntries->groupBy('user.type') as $type => $entriesByType) {
+        foreach ($planningEntries->groupBy(fn($e) => $e->user->departements->first()?->letter ?? '?') as $type => $entriesByType) {
             $startRow = $row;
 
             foreach ($entriesByType->groupBy('user.id') as $userId => $entriesByUser) {
                 $user = $entriesByUser->first()->user;
 
-                $typeLabel = match ($type) {
-                    'B' => 'Salaire',
-                    'S' => 'Secrétariat',
-                    'C' => 'Comptabilité',
-                    'I' => 'Informatique',
-                    default => 'Inconnu',
-                };
+                $typeLabel = $user->departements->first()?->nom ?? '—';
 
                 $sheet->setCellValue('A' . $row, $typeLabel);
                 $sheet->getStyle('A' . $row)->applyFromArray([
@@ -371,11 +408,11 @@ class AdminController extends Controller
                     ],
                 ]);
                 $sheet->getStyle('A' . $row)->getAlignment()->setTextRotation(90);
-                $sheet->setCellValue('B' . $row, $user->name . ' ' . $user->firstname . "\n" . $user->phone . "\n" . $user->fixe);
+                $sheet->setCellValue('B' . $row, $user->name . ' ' . $user->firstname . "\n" . $user->phone . "\n" . ($user->profile?->fixe ?? ''));
                 $sheet->getStyle('B' . $row)->getAlignment()->setWrapText(true);
 
-                $societes = explode(',', $user->remarque);
-                $sheet->setCellValue('C' . $row, implode("\n", $societes));
+                $agencesNames = $user->agences->map(fn($a) => $a->display_name)->implode("\n");
+                $sheet->setCellValue('C' . $row, $agencesNames);
                 $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
                 $sheet->getStyle('C' . $row)->getFont()->setSize(5);
 
@@ -383,7 +420,7 @@ class AdminController extends Controller
                 $phoneStr = (string)($user->phone ?? '');
                 $richText->createText($user->name . ' ' . $user->firstname . "\n" . $phoneStr . "\n");
 
-                $fixeStr = (string)($user->fixe ?? '');
+                $fixeStr = (string)($user->profile?->fixe ?? '');
                 if (!empty($fixeStr)) {
                     $fixeText = $richText->createTextRun($fixeStr);
                     $fixeText->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
@@ -552,12 +589,22 @@ class AdminController extends Controller
             return now()->setISODate($selectedYear, $selectedWeek, $dayOffset);
         });
 
+        $selectedAgenceId = $this->resolveCurrentAgenceId($request);
+        $currentAgence    = $selectedAgenceId ? Agence::with('societe')->find($selectedAgenceId) : null;
+        $userIdsInAgence  = $selectedAgenceId
+            ? $this->userIdsInAgence($selectedAgenceId)
+            : collect();
+
         $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
-            ->with('user')
+            ->whereIn('user_id', $userIdsInAgence)
+            ->with(['user.profile', 'user.departements', 'user.agences.societe'])
             ->get()
+            ->filter(fn($entry) => $entry->user !== null)
             ->sort(function ($a, $b) {
                 $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
-                $typeComparison = $typeOrder[$a->user->type] <=> $typeOrder[$b->user->type];
+                $letterA = $a->user->departements->first()?->letter;
+                $letterB = $b->user->departements->first()?->letter;
+                $typeComparison = ($typeOrder[$letterA] ?? 99) <=> ($typeOrder[$letterB] ?? 99);
                 return $typeComparison === 0 ? strcmp($a->user->name, $b->user->name) : $typeComparison;
             });
 
@@ -567,9 +614,12 @@ class AdminController extends Controller
             $holidays += $this->belgianHolidays($y);
         }
 
-        $users = User::where('actif', true)->get();
-        $typeOrder  = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
-        $typeLabels = ['B' => 'Salaire', 'S' => 'Secrétariat', 'C' => 'Comptabilité', 'I' => 'Informatique'];
+        $users = User::with(['profile', 'departements', 'agences.societe'])
+            ->where('actif', true)
+            ->whereIn('id', $userIdsInAgence)
+            ->get();
+
+        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
         $congeTypeLabels = [
             'recup' => 'Récup.',
             'conge' => 'Congé (VA)',
@@ -579,11 +629,14 @@ class AdminController extends Controller
         ];
 
         $activeUsers = $users->sortBy([
-                fn($a, $b) => ($typeOrder[$a->type] ?? 99) <=> ($typeOrder[$b->type] ?? 99),
+                fn($a, $b) => ($typeOrder[$a->departements->first()?->letter] ?? 99) <=> ($typeOrder[$b->departements->first()?->letter] ?? 99),
                 fn($a, $b) => strcmp($a->name, $b->name),
             ])
-            ->groupBy('type')
+            ->groupBy(fn($u) => $u->departements->first()?->letter ?? '?')
             ->sortBy(fn($group, $type) => $typeOrder[$type] ?? 99);
+
+        $deptLabels = $users
+            ->mapWithKeys(fn($u) => [$u->departements->first()?->letter ?? '?' => $u->departements->first()?->nom ?? '—']);
 
         $deptColors = [
             'B' => ['bg' => '#d9ead3', 'text' => '#274e13'],
@@ -595,7 +648,8 @@ class AdminController extends Controller
         $html = view('admin.planning_pdf', compact(
             'selectedWeek', 'selectedYear', 'daysInWeek',
             'planningEntries', 'holidays', 'activeUsers',
-            'typeLabels', 'congeTypeLabels', 'deptColors'
+            'deptLabels', 'congeTypeLabels', 'deptColors',
+            'currentAgence'
         ))->render();
 
         $options = new Options();

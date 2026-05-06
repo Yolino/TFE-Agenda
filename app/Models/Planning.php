@@ -10,6 +10,8 @@ class Planning extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql';
+
     protected $table = 'plannings';
 
     public const STATUS_MAP = [

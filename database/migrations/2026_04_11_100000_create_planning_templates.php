@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('planning_templates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('user_id')->comment('FK logique vers bti.users.id');
             $table->tinyInteger('day_of_week');
             $table->time('start_time_morning')->nullable();
             $table->time('end_time_morning')->nullable();
