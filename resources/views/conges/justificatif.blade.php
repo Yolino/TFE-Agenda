@@ -44,7 +44,7 @@
                             <td>du {{ $justificatif->formattedStartDate }} au {{ $justificatif->formattedEndDate }}</td>
                             <td>{{ $justificatif->nb_jours . ($justificatif->nb_jours > 1 ? ' jours' : ' jour') }}</td>
                             <td>
-                                <a href="{{ asset('storage/' . $justificatif->certificat_medical) }}" target="_blank"
+                                <a href="{{ route('justificatif-absence.certificat', $justificatif) }}" target="_blank"
                                    class="btn btn-sm btn-secondary tooltip" data-tip="Voir le certificat">
                                     <i class="fa-duotone fa-file-medical"></i>
                                 </a>
@@ -94,7 +94,7 @@
                             <td>du {{ $justificatif->formattedStartDate }} au {{ $justificatif->formattedEndDate }}</td>
                             <td>{{ $justificatif->nb_jours . ($justificatif->nb_jours > 1 ? ' jours' : ' jour') }}</td>
                             <td>
-                                <a href="{{ asset('storage/' . $justificatif->certificat_medical) }}" target="_blank"
+                                <a href="{{ route('justificatif-absence.certificat', $justificatif) }}" target="_blank"
                                    class="btn btn-sm btn-secondary tooltip" data-tip="Voir le certificat">
                                     <i class="fa-duotone fa-file-medical"></i>
                                 </a>

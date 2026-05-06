@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Storage;
 use App\Models\JustificatifAbsence;
 use Carbon\Carbon;
 
@@ -48,5 +49,22 @@ class JustificatifAbsenceController extends Controller
             ->map($format);
 
         return view('conges.justificatif', compact('justificatifs', 'historique', 'anneesDisponibles', 'selectedYear'));
+    }
+
+    public function certificate(JustificatifAbsence $justificatif)
+    {
+        $user = auth()->user();
+
+        if (! $user || ((int) $justificatif->user_id !== (int) $user->id && ! $user->is_admin())) {
+            abort(403);
+        }
+
+        $path = $justificatif->certificat_medical;
+
+        if (! $path || ! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($path);
     }
 }

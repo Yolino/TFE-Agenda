@@ -75,6 +75,7 @@ Route::prefix('/mes-conges')->controller(CongeController::class)->name('mes-cong
 // JUSTIFICATIFS D'ABSENCE
 Route::prefix('/justificatif-absence')->controller(JustificatifAbsenceController::class)->name('justificatif-absence.')->middleware('auth')->group(function () {
     Route::get('/', 'index')->name('index');
+    Route::get('/certificat/{justificatif}', 'certificate')->name('certificat');
 });
 
 Route::prefix('/admin')->name('admin.')->middleware('auth', 'is_admin')->group(function () {
