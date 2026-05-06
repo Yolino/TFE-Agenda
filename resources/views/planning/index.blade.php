@@ -13,17 +13,11 @@
     <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate), @json(auth()->user()->is_admin()))' class="card-eg">
 
         {{-- Sélecteur d'utilisateur pour les admins --}}
-        @if(auth()->user()->is_admin() && $users->isNotEmpty())
+        @if(auth()->user()->is_admin())
         <div class="flex items-center gap-3 mb-4 p-3 bg-base-200 rounded-box">
             <i class="fa-duotone fa-user-gear text-primary"></i>
             <label class="font-bold text-sm uppercase">Gérer le planning de :</label>
-            <select @change="switchUser($event.target.value)" class="select select-bordered" x-ref="userSelector">
-                @foreach($users as $user)
-                <option value="{{ $user->id }}" {{ $user->id == $targetUserId ? 'selected' : '' }}>
-                    {{ $user->firstname }} {{ $user->name }}
-                </option>
-                @endforeach
-            </select>
+            <livewire:user-autocomplete :selected-user-id="$targetUserId" />
         </div>
         @endif
 

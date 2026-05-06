@@ -3,7 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\User;
+use App\Models\UserAgendaProfile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class EditProfile extends Component
@@ -19,13 +22,7 @@ class EditProfile extends Component
 
     public function mount(): void
     {
-        $user = auth()->user();
-        $this->firstname = $user->firstname;
-        $this->name      = $user->name;
-        $this->email     = $user->email;
-        $this->phone     = $user->phone;
-        $this->fixe      = $user->fixe;
-        $this->remarque  = $user->remarque;
+        $this->loadFromUser();
     }
 
     public function openModal(): void
@@ -38,25 +35,17 @@ class EditProfile extends Component
     {
         $this->showModal = false;
         $this->resetValidation();
-
-        // Annule les modifications non sauvegardées
-        $user = auth()->user();
-        $this->firstname = $user->firstname;
-        $this->name      = $user->name;
-        $this->email     = $user->email;
-        $this->phone     = $user->phone;
-        $this->fixe      = $user->fixe;
-        $this->remarque  = $user->remarque;
+        $this->loadFromUser();
     }
 
     public function save(): void
     {
-        $user = User::findOrFail(auth()->id());
+        $user = User::with('profile')->findOrFail(auth()->id());
 
         $this->validate([
             'firstname' => 'required|string|max:50',
             'name'      => 'required|string|max:50',
-            'email'     => 'required|email|max:100|unique:users,email,' . $user->id,
+            'email'     => ['required', 'email', 'max:100', Rule::unique('bti.users', 'email')->ignore($user->id)],
             'phone'     => 'nullable|string|max:20',
             'fixe'      => 'nullable|string|max:20',
             'remarque'  => 'nullable|string|max:500',
@@ -70,14 +59,40 @@ class EditProfile extends Component
             'email.unique'       => "Cette adresse email est déjà utilisée.",
         ]);
 
-        $user->update([
-            'firstname' => $this->firstname,
-            'name'      => $this->name,
-            'email'     => $this->email,
-            'phone'     => $this->phone,
-            'fixe'      => $this->fixe,
-            'remarque'  => $this->remarque,
-        ]);
+        $bti   = DB::connection('bti');
+        $local = DB::connection('mysql');
+
+        $bti->beginTransaction();
+        $local->beginTransaction();
+
+        try {
+            $user->update([
+                'firstname' => $this->firstname,
+                'name'      => $this->name,
+                'email'     => $this->email,
+                'phone'     => $this->phone,
+            ]);
+
+            UserAgendaProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'fixe'     => $this->fixe,
+                    'remarque' => $this->remarque,
+                ]
+            );
+
+            $bti->commit();
+            $local->commit();
+        } catch (\Throwable $e) {
+            $bti->rollBack();
+            $local->rollBack();
+            $this->dispatch('swal',
+                title: 'Erreur',
+                text: 'Impossible de mettre à jour le profil : ' . $e->getMessage(),
+                icon: 'error'
+            );
+            return;
+        }
 
         $this->showModal = false;
         $this->dispatch('swal', title: 'Profil mis à jour !', text: 'Vos informations ont été sauvegardées.', icon: 'success');
@@ -100,6 +115,18 @@ class EditProfile extends Component
                 icon: 'error'
             );
         }
+    }
+
+    private function loadFromUser(): void
+    {
+        $user = User::with('profile')->findOrFail(auth()->id());
+
+        $this->firstname = $user->firstname;
+        $this->name      = $user->name;
+        $this->email     = $user->email;
+        $this->phone     = $user->phone;
+        $this->fixe      = $user->profile?->fixe;
+        $this->remarque  = $user->profile?->remarque;
     }
 
     public function render()

@@ -12,22 +12,24 @@ class SendPlanningEmail extends Component
 {
     public int $week;
     public int $year;
+    public ?int $agenceId = null;
 
     #[Validate('required|email')]
     public string $recipient = '';
 
-    public function mount(int $week, int $year): void
+    public function mount(int $week, int $year, ?int $agenceId = null): void
     {
         $this->week = $week;
         $this->year = $year;
+        $this->agenceId = $agenceId;
     }
 
     public function send(PlanningExportService $exporter): void
     {
         $this->validate();
 
-        $pdfPath   = $exporter->generatePdf($this->week, $this->year);
-        $excelPath = $exporter->generateExcel($this->week, $this->year);
+        $pdfPath   = $exporter->generatePdf($this->week, $this->year, $this->agenceId);
+        $excelPath = $exporter->generateExcel($this->week, $this->year, $this->agenceId);
         $sender    = auth()->user();
 
         Mail::to($this->recipient)->send(new PlanningEmail(
@@ -36,7 +38,7 @@ class SendPlanningEmail extends Component
             pdfPath: $pdfPath,
             excelPath: $excelPath,
             senderName: trim($sender->name . ' ' . $sender->firstname),
-            senderTitle: $sender->remarque ?? null,
+            senderTitle: $sender->fonction ?? null,
             senderPhone: $sender->phone ?? null,
         ));
 

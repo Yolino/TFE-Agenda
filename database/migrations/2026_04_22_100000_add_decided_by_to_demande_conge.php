@@ -9,15 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('demande_conge', function (Blueprint $table) {
-            $table->foreignId('decided_by')->nullable()->after('status')->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('decided_by')->nullable()->after('status')->comment('FK logique vers bti.users.id');
             $table->timestamp('decided_at')->nullable()->after('decided_by');
+            $table->index('decided_by');
         });
     }
 
     public function down(): void
     {
         Schema::table('demande_conge', function (Blueprint $table) {
-            $table->dropForeign(['decided_by']);
+            $table->dropIndex(['decided_by']);
             $table->dropColumn(['decided_by', 'decided_at']);
         });
     }

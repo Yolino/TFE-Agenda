@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PlanningRequest extends FormRequest
 {
@@ -29,8 +31,13 @@ class PlanningRequest extends FormRequest
             ? array_merge($userStatuses, $adminOnlyStatuses)
             : $userStatuses;
 
+        $userModel = new User();
+        $userConnection = $userModel->getConnectionName();
+        $userTable = $userModel->getTable();
+        $userTableWithConnection = $userConnection ? "{$userConnection}.{$userTable}" : $userTable;
+
         return [
-            'user_id' => 'required|exists:users,id',
+            'user_id' => ['required', Rule::exists($userTableWithConnection, 'id')],
             'date' => 'required|date',
             'status' => 'required|in:' . implode(',', $allowedStatuses),
             'start_time' => 'nullable|date_format:H:i',

@@ -63,6 +63,22 @@ return [
             ]) : [],
         ],
 
+        'bti' => [
+            'driver' => 'mysql',
+            'host' => env('DB_BTI_HOST', '127.0.0.1'),
+            'port' => env('DB_BTI_PORT', '3306'),
+            'database' => env('DB_BTI_DATABASE', 'bti'),
+            'username' => env('DB_BTI_USERNAME', 'root'),
+            'password' => env('DB_BTI_PASSWORD', ''),
+            'unix_socket' => env('DB_BTI_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),

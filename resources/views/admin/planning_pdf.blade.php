@@ -80,12 +80,12 @@
         <thead>
             <tr>
                 <th class="thead-title" colspan="{{ 2 + $daysInWeek->count() }}">
-                    Planning Crocheux &mdash; Semaine {{ $selectedWeek }} / {{ $selectedYear }}
+                    Planning {{ $currentAgence?->display_name ?? '' }} &mdash; Semaine {{ $selectedWeek }} / {{ $selectedYear }}
                 </th>
             </tr>
             <tr>
                 <th class="col-name">Nom &ndash; Prénom</th>
-                <th class="col-soc">Sociétés</th>
+                <th class="col-soc">Agence</th>
                 @foreach($daysInWeek as $day)
                     @php $isHoliday = isset($holidays[$day->toDateString()]); @endphp
                     <th class="{{ $isHoliday ? 'holiday-header' : '' }}">
@@ -100,14 +100,13 @@
         </thead>
         <tbody>
             @foreach($activeUsers as $type => $usersInGroup)
-                @php $label = $typeLabels[$type] ?? $type; @endphp
+                @php $label = $deptLabels[$type] ?? $type; @endphp
 
                 <tr class="dept-row">
                     <td colspan="{{ 2 + $daysInWeek->count() }}" class="dept-{{ $type }}">{{ $label }}</td>
                 </tr>
 
                 @foreach($usersInGroup->sortBy('name') as $user)
-                    @php $societes = array_filter(array_map('trim', explode(',', $user->remarque ?? ''))); @endphp
                     <tr class="user-row">
 
                         <td class="col-name bg-{{ $type }}" style="text-align:left;">
@@ -115,13 +114,13 @@
                             @if($user->phone)
                                 <br><span class="phone-text">{{ $user->phone }}</span>
                             @endif
-                            @if($user->fixe)
-                                <br><span class="fixe-text">{{ $user->fixe }}</span>
+                            @if($user->profile?->fixe)
+                                <br><span class="fixe-text">{{ $user->profile->fixe }}</span>
                             @endif
                         </td>
 
                         <td class="soc-text">
-                            @foreach($societes as $s){{ $s }}<br>@endforeach
+                            @foreach($user->agences as $agence){{ $agence->display_name }}<br>@endforeach
                         </td>
 
                         @foreach($daysInWeek as $day)

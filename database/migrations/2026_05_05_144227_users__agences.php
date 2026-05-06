@@ -6,29 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('justificatif_absence', function (Blueprint $table) {
+        Schema::create('agences_users', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->comment('FK logique vers bti.users.id');
-            $table->date('start_date');
-            $table->date('end_date');
-            $table->integer('nb_jours');
-            $table->string('certificat_medical');
+            $table->unsignedBigInteger('agence_id')->comment('FK logique vers bti.agences.id');
             $table->timestamps();
 
+            $table->unique(['user_id', 'agence_id']);
             $table->index('user_id');
+            $table->index('agence_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('justificatif_absence');
+        Schema::dropIfExists('agences_users');
     }
 };

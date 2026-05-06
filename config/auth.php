@@ -94,6 +94,7 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => 'password_reset_tokens',
+            'connection' => 'bti',
             'expire' => 60,
             'throttle' => 60,
         ],

@@ -10,6 +10,8 @@ class DemandeConge extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql';
+
     protected $table = 'demande_conge';
 
     protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status', 'decided_by', 'decided_at', 'cancelled_at', 'cancelled_by'];
