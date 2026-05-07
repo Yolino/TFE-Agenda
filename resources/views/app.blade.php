@@ -41,12 +41,17 @@
     @livewireStyles
 </head>
 
-<body class="font-agenda flex min-h-screen bg-gray-100" x-data="{ isSidebarOpen: true }" @toggle-sidebar.window="isSidebarOpen = !isSidebarOpen">
+<body class="font-agenda flex min-h-screen bg-gray-100" x-data="{ isSidebarOpen: window.innerWidth > 768 }" @toggle-sidebar.window="isSidebarOpen = !isSidebarOpen">
     @auth
+    {{-- Backdrop mobile : ferme la sidebar au clic sur le fond --}}
+    <div x-show="isSidebarOpen" x-cloak
+         @click="$dispatch('toggle-sidebar')"
+         class="fixed inset-0 bg-black bg-opacity-40 z-[9] md:hidden"
+         x-transition.opacity></div>
     @include('partials.sidebar')
     @endauth
 
-    <div class="w-screen">
+    <div class="flex-1 min-w-0 overflow-x-hidden">
         @yield('content')
     </div>
 

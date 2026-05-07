@@ -6,12 +6,12 @@
 <div class="p-4">
     @include('partials.flash')
     <div class="card-eg">
-        <h1 class="text-4xl font-medium">Justificatifs d'absence</h1>
+        <h1 class="text-2xl md:text-4xl font-medium">Justificatifs d'absence</h1>
     </div>
 
     @php $ongletInitial = request()->has('year') ? 'historique' : 'justificatifs'; @endphp
-    <div class="card-eg flex flex-row gap-4" x-data="{ onglet: '{{ $ongletInitial }}' }">
-        <div class="basis-3/4">
+    <div class="card-eg flex flex-col lg:flex-row gap-4" x-data="{ onglet: '{{ $ongletInitial }}' }">
+        <div class="lg:basis-3/4 min-w-0">
             <!-- Onglets -->
             <div role="tablist" class="tabs tabs-bordered mb-4">
                 <a role="tab" class="tab" :class="onglet === 'justificatifs' ? 'tab-active' : ''" @click="onglet = 'justificatifs'">
@@ -30,6 +30,7 @@
 
             <!-- Onglet : Mes justificatifs -->
             <div x-show="onglet === 'justificatifs'">
+                <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
@@ -57,6 +58,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>{{-- /overflow-x-auto --}}
             </div>
 
             <!-- Onglet : Historique -->
@@ -80,6 +82,7 @@
                 </div>
                 @endif
 
+                <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
@@ -107,10 +110,11 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>{{-- /overflow-x-auto --}}
             </div>
         </div>
 
-        <div class="basis-1/4">
+        <div class="lg:basis-1/4">
             <livewire:justificatif-absence />
         </div>
     </div>

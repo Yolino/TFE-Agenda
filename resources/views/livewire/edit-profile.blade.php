@@ -53,7 +53,7 @@
     <div x-data="{ open: @entangle('showModal') }">
         <div x-show="open" x-cloak x-transition
              class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-            <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative">
+            <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
                 <button wire:click="closeModal"
                         class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
                 <div class="p-6">

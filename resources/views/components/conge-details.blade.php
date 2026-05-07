@@ -25,7 +25,7 @@
 @endphp
 
 <div class="bg-base-200 rounded-box p-4">
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
             <p class="font-bold text-sm uppercase mb-1">Employé</p>
             <p>{{ $conge->user->firstname }} {{ $conge->user->name }}</p>

@@ -6,10 +6,11 @@
 <div class="p-4">
     @include('partials.flash')
     <div class="card-eg">
-        <h1 class="text-4xl font-medium">Mes congés</h1>
+        <h1 class="text-2xl md:text-4xl font-medium">Mes congés</h1>
     </div>
-    <div class="card-eg flex flex-row gap-4">
-        <div class="basis-3/4">
+    <div class="card-eg flex flex-col lg:flex-row gap-4">
+        <div class="lg:basis-3/4 min-w-0">
+            <div class="overflow-x-auto">
             <table class="table">
                 <thead>
                     <tr>
@@ -53,8 +54,9 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>{{-- /overflow-x-auto --}}
         </div>
-        <div class="basis-1/4">
+        <div class="lg:basis-1/4">
             <form action="" method="post">
                 @method('POST')
                 @csrf
