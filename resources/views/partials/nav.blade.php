@@ -12,7 +12,7 @@
                     {{ auth()->user()->firstname[0] . auth()->user()->name[0] }}
                 </span>
             </label>
-            <ul tabindex="0" class="mt-14 z-[1] p-2 menu menu-md dropdown-content bg-base-100 w-52">
+            <ul tabindex="0" class="mt-14 z-[50] p-2 menu menu-md dropdown-content bg-base-100 w-52 shadow-lg rounded-box">
                 <li><a href="/mon-profile"><i class="fa-duotone fa-user mr-1"></i> Mon profile</a></li>
                 <li><a href="/logout"><i class="fa-duotone fa-arrow-right-from-bracket mr-1"></i> Se déconnecter</a></li>
             </ul>

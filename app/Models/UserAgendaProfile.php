@@ -15,6 +15,11 @@ class UserAgendaProfile extends Model
         'user_id',
         'fixe',
         'remarque',
+        'actif',
+    ];
+
+    protected $casts = [
+        'actif' => 'boolean',
     ];
 
     public function user(): BelongsTo

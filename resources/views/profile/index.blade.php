@@ -15,7 +15,7 @@
 
     {{-- Carte profil --}}
     <div class="card-eg">
-        <div class="flex gap-6 items-start">
+        <div class="flex flex-col sm:flex-row gap-6 items-start">
 
             {{-- Avatar --}}
             <div class="flex-shrink-0">

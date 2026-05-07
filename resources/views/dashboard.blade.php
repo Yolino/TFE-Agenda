@@ -6,7 +6,7 @@
 <div class="p-4">
     @include('partials.flash')
     <div class="card-eg">
-        <h1 class="text-4xl font-medium">Tableau de bord</h1>
+        <h1 class="text-2xl md:text-4xl font-medium">Tableau de bord</h1>
     </div>
 </div>
 @endsection

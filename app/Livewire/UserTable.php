@@ -46,6 +46,7 @@ class UserTable extends Component
 
     public $name;
     public $firstname;
+    public $alias;
     public $email;
     public $phone;
     public $isAdmin = false;
@@ -79,7 +80,7 @@ class UserTable extends Component
 
     public function openCreateForm(): void
     {
-        $this->reset(['name', 'firstname', 'email', 'phone', 'fixe', 'remarque', 'agence_id', 'departement_id']);
+        $this->reset(['name', 'firstname', 'alias', 'email', 'phone', 'fixe', 'remarque', 'agence_id', 'departement_id']);
         $this->isAdmin = false;
         $this->openCreateForm = true;
         $this->openEditForm = false;
@@ -181,6 +182,7 @@ class UserTable extends Component
         $validated = $this->validate([
             'name'           => 'required|string|max:255',
             'firstname'      => 'required|string|max:255',
+            'alias'          => 'nullable|string|max:50',
             'email'          => 'required|email|unique:bti.users,email',
             'phone'          => 'nullable|string|max:20',
             'isAdmin'        => 'boolean',
@@ -202,6 +204,7 @@ class UserTable extends Component
             $user = User::create([
                 'name'        => $validated['name'],
                 'firstname'   => $validated['firstname'],
+                'alias'       => $validated['alias'] ?? null,
                 'email'       => $validated['email'],
                 'phone'       => $validated['phone'] ?? null,
                 'password'    => bcrypt(Str::random(40)),
@@ -241,7 +244,7 @@ class UserTable extends Component
             $emailSent = false;
         }
 
-        $this->reset('name', 'firstname', 'email', 'phone', 'isAdmin', 'fixe', 'remarque', 'agence_id', 'departement_id', 'openCreateForm');
+        $this->reset('name', 'firstname', 'alias', 'email', 'phone', 'isAdmin', 'fixe', 'remarque', 'agence_id', 'departement_id', 'openCreateForm');
 
         if ($emailSent) {
             $this->dispatch('swal',
@@ -299,13 +302,32 @@ class UserTable extends Component
 
     public function toggleStatus(int $id): void
     {
-        $user = User::findOrFail($id);
-        $user->actif = !$user->actif;
-        $user->save();
+        $profile = UserAgendaProfile::firstOrCreate(
+            ['user_id' => $id],
+            ['actif' => true]
+        );
+        $profile->actif = false;
+        $profile->save();
 
         $this->dispatch('swal',
-            title: $user->actif ? 'Activé' : 'Désactivé',
-            text: 'Statut de l\'utilisateur mis à jour.',
+            title: 'Désactivé',
+            text: 'Le compte a été désactivé localement. La base globale n\'a pas été modifiée.',
+            icon: 'success'
+        );
+    }
+
+    public function reactivateUser(int $id): void
+    {
+        $profile = UserAgendaProfile::firstOrCreate(
+            ['user_id' => $id],
+            ['actif' => true]
+        );
+        $profile->actif = true;
+        $profile->save();
+
+        $this->dispatch('swal',
+            title: 'Réactivé',
+            text: 'Le compte a été réactivé avec succès.',
             icon: 'success'
         );
     }
@@ -330,7 +352,7 @@ class UserTable extends Component
 
     public function render()
     {
-        $query = User::with(['departements', 'agences.societe']);
+        $query = User::with(['departements', 'agences.societe', 'profile']);
 
         if (!empty(session('search'))) {
             $search = session('search');
@@ -342,7 +364,16 @@ class UserTable extends Component
         }
 
         if (isset($this->filterStatus)) {
-            $query->where('actif', $this->filterStatus === 'actif');
+            $inactiveIds = DB::connection('mysql')
+                ->table('user_agenda_profiles')
+                ->where('actif', false)
+                ->pluck('user_id');
+
+            if ($this->filterStatus === 'inactif') {
+                $query->whereIn('id', $inactiveIds);
+            } elseif ($this->filterStatus === 'actif') {
+                $query->whereNotIn('id', $inactiveIds);
+            }
         }
 
         if ($this->filterIsAdmin === 'admin') {

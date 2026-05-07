@@ -6,7 +6,7 @@
 <div class="p-4">
     @include('partials.flash')
     <div class="card-eg flex items-center justify-between gap-4 flex-wrap">
-        <h1 class="text-4xl font-medium">Mes congés</h1>
+        <h1 class="text-2xl md:text-4xl font-medium">Mes congés</h1>
         <div class="min-w-[18rem]">
             <x-leave-balance :balance="$balance" compact />
         </div>
@@ -37,7 +37,7 @@
         $ongletInitial = request()->has('year') ? 'historique' : 'demandes';
         $refuseeIds = $conges->where('status', 'refusee')->pluck('id')->values()->toArray();
     @endphp
-    <div class="card-eg flex flex-row gap-4" x-data="{
+    <div class="card-eg flex flex-col lg:flex-row gap-4" x-data="{
         onglet: '{{ $ongletInitial }}',
         selectedConge: null,
         toggleDetails(id) { this.selectedConge = this.selectedConge === id ? null : id; },
@@ -70,7 +70,7 @@
             });
         }
     }">
-        <div class="basis-3/4">
+        <div class="lg:basis-3/4 min-w-0">
             <!-- Onglets -->
             <div role="tablist" class="tabs tabs-bordered mb-4">
                 <a role="tab" class="tab" :class="onglet === 'demandes' ? 'tab-active' : ''" @click="onglet = 'demandes'">
@@ -85,6 +85,7 @@
 
             <!-- Onglet : Mes demandes -->
             <div x-show="onglet === 'demandes'">
+                <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
@@ -161,6 +162,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>{{-- /overflow-x-auto --}}
             </div>
 
             <!-- Onglet : Historique -->
@@ -183,6 +185,7 @@
                     </div>
                 </div>
                 @endif
+                <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
@@ -257,9 +260,10 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>{{-- /overflow-x-auto --}}
             </div>
         </div>
-        <div class="basis-1/4">
+        <div class="lg:basis-1/4">
             <form action="" method="post" x-data="{ sameDay: false, halfDay: false }">
                 @method('POST')
                 @csrf

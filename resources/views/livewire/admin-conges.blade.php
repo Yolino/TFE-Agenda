@@ -23,7 +23,7 @@
     @endphp
 
     <!-- Filtres -->
-    <div class="flex gap-2 mb-4">
+    <div class="flex flex-wrap gap-2 mb-4">
         <button wire:click="$set('filter', 'envoyee')" class="btn btn-sm {{ $filter === 'envoyee' ? 'btn-primary' : 'btn-ghost' }}">
             En attente
             @if($nbEnAttente > 0)
@@ -36,14 +36,15 @@
         <button wire:click="$set('filter', 'toutes')" class="btn btn-sm {{ $filter === 'toutes' ? 'btn-primary' : 'btn-ghost' }}">Toutes</button>
     </div>
 
+    <div class="overflow-x-auto">
     <table class="table">
         <thead>
             <tr>
                 <th></th>
                 <th>Employé</th>
-                <th>Type</th>
-                <th>Date</th>
-                <th>Nb jours</th>
+                <th class="hidden sm:table-cell">Type</th>
+                <th class="hidden md:table-cell">Date</th>
+                <th class="hidden sm:table-cell">Nb j.</th>
                 <th>Statut</th>
                 <th></th>
             </tr>
@@ -57,9 +58,9 @@
                     </span>
                 </th>
                 <td class="font-bold">{{ $demande->user->firstname }} {{ $demande->user->name }}</td>
-                <td>{{ $types[$demande->type] }}</td>
-                <td>du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</td>
-                <td>
+                <td class="hidden sm:table-cell">{{ $types[$demande->type] }}</td>
+                <td class="hidden md:table-cell">du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</td>
+                <td class="hidden sm:table-cell">
                     {{ $formatJours($demande->nb_jours) }}
                     @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
                         <span class="badge badge-xs badge-outline ml-1">½</span>
@@ -105,4 +106,5 @@
             @endforelse
         </tbody>
     </table>
+    </div>{{-- /overflow-x-auto --}}
 </div>

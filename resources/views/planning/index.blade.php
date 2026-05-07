@@ -7,7 +7,7 @@
     @include('partials.flash')
 
     <div class="card-eg">
-        <h1 class="text-4xl font-medium">Mon planning</h1>
+        <h1 class="text-2xl md:text-4xl font-medium">Mon planning</h1>
     </div>
 
     <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate), @json(auth()->user()->is_admin()))' class="card-eg">
@@ -47,9 +47,10 @@
             <span>Ce mois est verrouillé. L'édition n'est possible qu'à partir du <strong x-text="formatLockDate()"></strong> (lundi de la semaine suivante).</span>
         </div>
 
-        <div class="grid grid-cols-7 gap-4">
+        <div class="overflow-x-auto -mx-2 px-2">
+        <div class="grid grid-cols-7 gap-1 md:gap-4 min-w-[480px]">
             @foreach($weekDays as $day)
-            <div class="font-bold text-center border-b-2">
+            <div class="font-bold text-center border-b-2 text-xs md:text-sm truncate">
                 {{ $day }}
             </div>
             @endforeach
@@ -143,9 +144,10 @@
         </div>
         @endfor
     </div>
+    </div>{{-- /overflow-x-auto --}}
 
-    <div x-show="dayModalOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" style="display: none;">
-        <div class="relative top-20 mx-auto p-5 border w-1/3 shadow-lg rounded-md bg-white">
+    <div x-show="dayModalOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" style="display: none;">
+        <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-md relative max-h-[90vh] overflow-y-auto p-5">
             <div class="mt-3 text-center">
                 <div class="mt-2">
                     <p class="text-sm text-gray-500 mb-5">
@@ -179,23 +181,23 @@
                             <input type="checkbox" x-model="afternoonEnabled" class="toggle-checkbox">
                         </div>
 
-                        <div class="my-4 flex justify-center items-center" x-show="dayData.status === 'bureau' || dayData.status === 'tele_travail'">
-                            <div class="flex gap-2">
+                        <div class="my-4" x-show="dayData.status === 'bureau' || dayData.status === 'tele_travail'">
+                            <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-center text-sm text-gray-500">Début matin</label>
-                                    <input type="time" x-model="dayData.start_time" class="w-full border rounded px-3 py-2 outline-none">
+                                    <label class="block text-center text-xs text-gray-500 mb-1">Début matin</label>
+                                    <input type="time" x-model="dayData.start_time" class="w-full border rounded px-2 py-1.5 text-sm outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-center text-sm text-gray-500">Fin matin</label>
-                                    <input type="time" x-model="dayData.end_time" class="w-full border rounded px-3 py-2 outline-none">
+                                    <label class="block text-center text-xs text-gray-500 mb-1">Fin matin</label>
+                                    <input type="time" x-model="dayData.end_time" class="w-full border rounded px-2 py-1.5 text-sm outline-none">
                                 </div>
                                 <div x-show="afternoonEnabled">
-                                    <label class="block text-center text-sm text-gray-500">Début aprem</label>
-                                    <input type="time" x-model="dayData.start_time_afternoon" class="w-full border rounded px-3 py-2 outline-none">
+                                    <label class="block text-center text-xs text-gray-500 mb-1">Début après-midi</label>
+                                    <input type="time" x-model="dayData.start_time_afternoon" class="w-full border rounded px-2 py-1.5 text-sm outline-none">
                                 </div>
                                 <div x-show="afternoonEnabled">
-                                    <label class="block text-center text-sm text-gray-500">Fin aprem</label>
-                                    <input type="time" x-model="dayData.end_time_afternoon" class="w-full border rounded px-3 py-2 outline-none">
+                                    <label class="block text-center text-xs text-gray-500 mb-1">Fin après-midi</label>
+                                    <input type="time" x-model="dayData.end_time_afternoon" class="w-full border rounded px-2 py-1.5 text-sm outline-none">
                                 </div>
                             </div>
                         </div>

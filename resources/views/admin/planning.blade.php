@@ -6,8 +6,8 @@
 <div class="p-4">
     @include('partials.flash')
 
-    <div class="card-eg flex justify-between items-center">
-        <h1 class="text-4xl font-medium">
+    <div class="card-eg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h1 class="text-2xl md:text-4xl font-medium">
             Planning {{ $currentAgence?->display_name ?? '— aucune agence' }}
         </h1>
         @if(auth()->user()->is_admin())
@@ -36,21 +36,25 @@
                 if ($currentAgence) { $exportParams['agence_id'] = $currentAgence->id; }
             @endphp
 
-            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
-                <i class="fa-solid fa-arrow-left"></i> Semaine précédente
+            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-3 py-2 rounded">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span class="hidden sm:inline ml-1">Semaine précédente</span>
             </button>
-            <h2 class="text-xl font-bold">Semaine {{ $selectedWeek }} - {{ $selectedYear }}</h2>
-            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-4 py-2 rounded">
-                Semaine suivante <i class="fa-solid fa-arrow-right"></i>
+            <h2 class="text-base sm:text-xl font-bold text-center">Sem. {{ $selectedWeek }} — {{ $selectedYear }}</h2>
+            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-3 py-2 rounded">
+                <span class="hidden sm:inline mr-1">Semaine suivante</span>
+                <i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>
 
-        <div class="flex justify-end mb-4 gap-2">
-            <a href="{{ route('planning.export.pdf', $exportParams) }}" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                <i class="fa-solid fa-file-pdf mr-1"></i> Télécharger en PDF
+        <div class="flex flex-wrap justify-end mb-4 gap-2">
+            <a href="{{ route('planning.export.pdf', $exportParams) }}" class="btn bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 text-sm">
+                <i class="fa-solid fa-file-pdf mr-1"></i>
+                <span class="hidden sm:inline">Télécharger en </span>PDF
             </a>
-            <a href="{{ route('planning.export', $exportParams) }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                <i class="fa-solid fa-file-excel mr-1"></i> Télécharger en Excel
+            <a href="{{ route('planning.export', $exportParams) }}" class="btn bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 text-sm">
+                <i class="fa-solid fa-file-excel mr-1"></i>
+                <span class="hidden sm:inline">Télécharger en </span>Excel
             </a>
             <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence?->id" />
         </div>
@@ -78,7 +82,8 @@
                 ->mapWithKeys(fn($u) => [$u->departements->first()?->letter ?? '?' => $u->departements->first()?->nom ?? '—']);
         @endphp
 
-        <div class="grid gap-1" style="grid-template-columns: minmax(120px,160px) repeat(6, 1fr);">
+        <div class="overflow-x-auto -mx-4 px-4">
+        <div class="grid gap-1 min-w-[640px]" style="grid-template-columns: minmax(120px,160px) repeat(6, 1fr);">
             {{-- En-tête : colonne nom --}}
             <div class="text-center font-bold p-2 border rounded bg-gray-100"></div>
 
@@ -182,6 +187,7 @@
                 @endforeach
             @endforeach
         </div>
+        </div>{{-- /overflow-x-auto --}}
     </div>
 </div>
 @endsection

@@ -59,30 +59,36 @@
                         Nom
                         @if($sortField === 'name') <span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
                     </th>
-                    <th class="cursor-pointer select-none" wire:click="sortBy('email')">
+                    <th class="hidden sm:table-cell cursor-pointer select-none" wire:click="sortBy('email')">
                         Email
                         @if($sortField === 'email') <span>{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
                     </th>
                     <th>Rôle</th>
-                    <th>Département</th>
-                    <th>Agence</th>
+                    <th class="hidden md:table-cell">Département</th>
+                    <th class="hidden lg:table-cell">Agence</th>
                     <th class="text-center">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($users as $user)
-                <tr>
-                    <td class="font-medium">{{ $user->name }} {{ $user->firstname }}</td>
-                    <td>{{ $user->email }}</td>
+                @php $isLocallyActive = is_null($user->profile) || $user->profile->actif; @endphp
+                <tr class="{{ !$isLocallyActive ? 'opacity-60' : '' }}">
+                    <td class="font-medium">
+                        {{ $user->name }} {{ $user->firstname }}
+                        @if(!$isLocallyActive)
+                            <span class="badge badge-warning badge-xs ml-1">Inactif</span>
+                        @endif
+                    </td>
+                    <td class="hidden sm:table-cell">{{ $user->email }}</td>
                     <td>
                         <span class="badge {{ $user->is_admin() ? 'badge-error' : 'badge-info' }} badge-sm">
-                            {{ $user->is_admin() ? 'Admin' : 'Utilisateur' }}
+                            {{ $user->is_admin() ? 'Admin' : 'Util.' }}
                         </span>
                     </td>
-                    <td>
+                    <td class="hidden md:table-cell">
                         {{ $user->departements->first()?->nom ?? '—' }}
                     </td>
-                    <td>
+                    <td class="hidden lg:table-cell">
                         @forelse($user->agences as $agence)
                             <span class="badge badge-ghost badge-sm">{{ $agence->display_name }}</span>
                         @empty
@@ -93,11 +99,11 @@
                         <button wire:click="editUser({{ $user->id }})" class="btn btn-primary btn-xs">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        @if($user->actif)
+                        @if($isLocallyActive)
                         <button type="button" x-data
                             @click="Swal.fire({
                                 title: 'Désactiver ce compte ?',
-                                html: 'L\'utilisateur <strong>{{ addslashes($user->firstname . ' ' . $user->name) }}</strong> ne pourra plus se connecter.',
+                                html: 'L\'utilisateur <strong>{{ addslashes($user->firstname . ' ' . $user->name) }}</strong> sera désactivé localement uniquement.',
                                 icon: 'warning',
                                 showCancelButton: true,
                                 confirmButtonColor: '#d97706',
@@ -109,8 +115,8 @@
                             Désactiver
                         </button>
                         @else
-                        <button wire:click="toggleStatus({{ $user->id }})" class="btn btn-xs btn-success">
-                            Activer
+                        <button wire:click="reactivateUser({{ $user->id }})" class="btn btn-xs btn-success">
+                            <i class="fa-solid fa-rotate-right mr-1"></i>Réactiver
                         </button>
                         @endif
                     </td>
@@ -151,11 +157,20 @@
                         </div>
                     </div>
 
-                    <div class="form-control mb-4">
-                        <label class="label"><span class="label-text font-semibold">Email *</span></label>
-                        <input type="email" wire:model.defer="email"
-                               class="input input-bordered @error('email') input-error @enderror" />
-                        @error('email') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold">Email *</span></label>
+                            <input type="email" wire:model.defer="email"
+                                   class="input input-bordered @error('email') input-error @enderror" />
+                            @error('email') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Alias</span></label>
+                            <input type="text" wire:model.defer="alias"
+                                   class="input input-bordered @error('alias') input-error @enderror"
+                                   placeholder="Ex: jdupont" />
+                            @error('alias') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
