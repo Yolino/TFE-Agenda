@@ -97,7 +97,7 @@
                 'autre' => 'Autre',
             ];
 
-            $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+            $typeOrder = ['D' => 1, 'S' => 2, 'B' => 3, 'C' => 4, 'I' => 5, 'M' => 6, 'O' => 7, 'G' => 8, 'N' => 9, 'F' => 10, 'V' => 11];
 
             $activeUsers = $users->where('actif', true)
                 ->sortBy([
@@ -153,10 +153,17 @@
                 {{-- Ligne de séparation département --}}
                 @php
                     $deptBg = match($type) {
-                        'B' => 'bg-lime-100 text-lime-800',
+                        'D' => 'bg-violet-100 text-violet-800',
                         'S' => 'bg-orange-100 text-orange-800',
+                        'B' => 'bg-lime-100 text-lime-800',
                         'C' => 'bg-sky-100 text-sky-800',
                         'I' => 'bg-orange-50 text-orange-700',
+                        'M' => 'bg-yellow-100 text-yellow-800',
+                        'O' => 'bg-amber-100 text-amber-800',
+                        'G' => 'bg-slate-100 text-slate-700',
+                        'N' => 'bg-emerald-100 text-emerald-800',
+                        'F' => 'bg-rose-100 text-rose-800',
+                        'V' => 'bg-indigo-100 text-indigo-800',
                         default => 'bg-gray-100 text-gray-700',
                     };
                 @endphp
@@ -199,14 +206,28 @@
                             $bgClasses = $entry->status === 'custom'
                                 ? ''
                                 : match([$user->departements->first()?->letter, $isAbsent]) {
-                                    ['I', false] => 'bg-orange-100',
-                                    ['I', true]  => 'bg-gray-400',
-                                    ['C', false] => 'bg-sky-200',
-                                    ['C', true]  => 'bg-gray-400',
-                                    ['B', false] => 'bg-lime-200',
-                                    ['B', true]  => 'bg-gray-400',
+                                    ['D', false] => 'bg-violet-200',
+                                    ['D', true]  => 'bg-gray-400',
                                     ['S', false] => 'bg-orange-400',
                                     ['S', true]  => 'bg-gray-400',
+                                    ['B', false] => 'bg-lime-200',
+                                    ['B', true]  => 'bg-gray-400',
+                                    ['C', false] => 'bg-sky-200',
+                                    ['C', true]  => 'bg-gray-400',
+                                    ['I', false] => 'bg-orange-100',
+                                    ['I', true]  => 'bg-gray-400',
+                                    ['M', false] => 'bg-yellow-200',
+                                    ['M', true]  => 'bg-gray-400',
+                                    ['O', false] => 'bg-amber-200',
+                                    ['O', true]  => 'bg-gray-400',
+                                    ['G', false] => 'bg-slate-300',
+                                    ['G', true]  => 'bg-gray-400',
+                                    ['N', false] => 'bg-emerald-200',
+                                    ['N', true]  => 'bg-gray-400',
+                                    ['F', false] => 'bg-rose-200',
+                                    ['F', true]  => 'bg-gray-400',
+                                    ['V', false] => 'bg-indigo-200',
+                                    ['V', true]  => 'bg-gray-400',
                                     default      => 'bg-white',
                                 };
                             $customBgStyle = '';

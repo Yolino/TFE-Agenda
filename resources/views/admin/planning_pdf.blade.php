@@ -37,7 +37,11 @@
         .col-name { width: 110px; text-align: left; }
         .col-soc  { width: 56px; }
 
-        /* Ligne séparateur de département */
+        /* Ligne séparateur de département — ne peut pas être le dernier élément d'une page */
+        .dept-row {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
         .dept-row td {
             font-weight: bold;
             font-size: 12px;
@@ -47,10 +51,17 @@
         }
 
         /* Couleurs département */
-        .dept-B, .bg-B { background-color: #d9ead3; color: #274e13; }
+        .dept-D, .bg-D { background-color: #e9e4f8; color: #4a1870; }
         .dept-S, .bg-S { background-color: #fce5cd; color: #783f04; }
+        .dept-B, .bg-B { background-color: #d9ead3; color: #274e13; }
         .dept-C, .bg-C { background-color: #dae8fc; color: #1c4587; }
         .dept-I, .bg-I { background-color: #fff2cc; color: #7f6000; }
+        .dept-M, .bg-M { background-color: #fff8cc; color: #7d5a00; }
+        .dept-O, .bg-O { background-color: #ede3ca; color: #5a3e1a; }
+        .dept-G, .bg-G { background-color: #e3ecf2; color: #2c3e50; }
+        .dept-N, .bg-N { background-color: #d0ece2; color: #1a4a3a; }
+        .dept-F, .bg-F { background-color: #fad8e6; color: #7a1b3a; }
+        .dept-V, .bg-V { background-color: #d5e8f9; color: #1a3060; }
 
         /* Cellules jours — calquées sur l'Excel */
         .holiday-header { background-color: #99F6E4; color: #134E4A; }
