@@ -60,6 +60,7 @@ class UserTable extends Component
     public function mount(): void
     {
         $this->filterStatus = 'actif';
+        session()->forget('search');
     }
 
     public function sortBy(string $field): void
