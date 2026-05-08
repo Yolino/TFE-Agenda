@@ -1,8 +1,6 @@
-<div x-data="{ open: false }" @planning-emailed.window="open = false; Swal.fire({icon:'success', title:'Email envoyé !', timer:2000, showConfirmButton:false})">
-    <button type="button" @click="open = true" class="btn btn-success text-white">
-        <i class="fa-solid fa-paper-plane mr-1"></i> Envoyer par email
-    </button>
-
+<div x-data="{ open: false }"
+     @open-planning-email.window="open = true"
+     @planning-emailed.window="open = false; Swal.fire({icon:'success', title:'Email envoyé !', timer:2000, showConfirmButton:false})">
     <dialog class="modal" :class="{ 'modal-open': open }">
         <div class="modal-box">
             <h3 class="font-bold text-lg mb-4">Envoyer le planning crocheux</h3>

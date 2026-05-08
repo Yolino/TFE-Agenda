@@ -24,7 +24,7 @@ return new class extends Migration
             $table->time('actual_start_time_afternoon')->nullable();
             $table->time('actual_end_time_afternoon')->nullable();
             $table->tinyInteger('status_id')->nullable();
-            $table->boolean('is_completed')->default(false);
+            $table->unsignedBigInteger('custom_type_id')->nullable()->after('status_id');
             $table->foreignId('demande_conge_id')->nullable()->constrained('demande_conge')->nullOnDelete();
             $table->timestamps();
 

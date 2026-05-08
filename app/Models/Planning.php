@@ -24,6 +24,7 @@ class Planning extends Model
         'neant' => 7,
         'maladie' => 8,
         'jour_ferie' => 9,
+        'custom' => 10,
     ];
 
     protected $fillable = [
@@ -38,13 +39,11 @@ class Planning extends Model
         'actual_start_time_afternoon',
         'actual_end_time_afternoon',
         'status_id',
-        'is_completed',
+        'custom',
         'demande_conge_id',
     ];
 
-    protected $casts = [
-        'is_completed' => 'boolean',
-    ];
+    protected $casts = [];
 
     public function user(): BelongsTo
     {
@@ -55,6 +54,7 @@ class Planning extends Model
     {
         return $this->belongsTo(DemandeConge::class);
     }
+
 
     // Legacy compatibility with the previous API payload field names.
     public function getStatusAttribute(): ?string

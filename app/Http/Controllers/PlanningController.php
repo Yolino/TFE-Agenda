@@ -64,6 +64,7 @@ class PlanningController extends Controller
                         'end_time_afternoon' => $entry->end_time_afternoon ? $entry->end_time_afternoon : null,
                         'demande_conge_status' => $entry->demandeConge?->status,
                         'demande_conge_type' => $entry->demandeConge?->type,
+                        'custom' => $entry->custom,
                     ];
                 });
 
@@ -95,14 +96,16 @@ class PlanningController extends Controller
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
         }
 
+        $isCustom = $credentials['status'] === 'custom';
         Planning::create([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
             'status_id' => Planning::STATUS_MAP[$credentials['status']] ?? null,
-            'start_time_morning' => $credentials['start_time'] ?? null,
-            'end_time_morning' => $credentials['end_time'] ?? null,
-            'start_time_afternoon' => $credentials['start_time_afternoon'] ?? null,
-            'end_time_afternoon' => $credentials['end_time_afternoon'] ?? null,
+            'custom' => $isCustom ? ($credentials['custom'] ?? null) : null,
+            'start_time_morning' => $isCustom ? null : ($credentials['start_time'] ?? null),
+            'end_time_morning' => $isCustom ? null : ($credentials['end_time'] ?? null),
+            'start_time_afternoon' => $isCustom ? null : ($credentials['start_time_afternoon'] ?? null),
+            'end_time_afternoon' => $isCustom ? null : ($credentials['end_time_afternoon'] ?? null),
         ]);
 
         return response()->json(['message' => 'Succès'], 200);
@@ -208,6 +211,7 @@ class PlanningController extends Controller
                     'end_time_afternoon' => $entry->end_time_afternoon ? $entry->end_time_afternoon : null,
                     'demande_conge_status' => $entry->demandeConge?->status,
                     'demande_conge_type' => $entry->demandeConge?->type,
+                    'custom' => $entry->custom,
                 ];
             });
 
@@ -243,14 +247,16 @@ class PlanningController extends Controller
             if (! $stillSameCongeContext) {
                 $this->cancellationService->cancelFromPlanning($entry, auth()->id());
 
+                $isCustomNew = $newStatus === 'custom';
                 Planning::create([
                     'user_id' => $newUserId,
                     'date' => $newDate,
                     'status_id' => Planning::STATUS_MAP[$newStatus] ?? null,
-                    'start_time_morning' => $credentials['start_time'] ?? null,
-                    'end_time_morning' => $credentials['end_time'] ?? null,
-                    'start_time_afternoon' => $credentials['start_time_afternoon'] ?? null,
-                    'end_time_afternoon' => $credentials['end_time_afternoon'] ?? null,
+                    'custom' => $isCustomNew ? ($credentials['custom'] ?? null) : null,
+                    'start_time_morning' => $isCustomNew ? null : ($credentials['start_time'] ?? null),
+                    'end_time_morning' => $isCustomNew ? null : ($credentials['end_time'] ?? null),
+                    'start_time_afternoon' => $isCustomNew ? null : ($credentials['start_time_afternoon'] ?? null),
+                    'end_time_afternoon' => $isCustomNew ? null : ($credentials['end_time_afternoon'] ?? null),
                 ]);
 
                 return response()->json([
@@ -260,14 +266,16 @@ class PlanningController extends Controller
             }
         }
 
+        $isCustom = $credentials['status'] === 'custom';
         $entry->update([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
             'status_id' => Planning::STATUS_MAP[$credentials['status']] ?? null,
-            'start_time_morning' => $credentials['start_time'] ?? null,
-            'end_time_morning' => $credentials['end_time'] ?? null,
-            'start_time_afternoon' => $credentials['start_time_afternoon'] ?? null,
-            'end_time_afternoon' => $credentials['end_time_afternoon'] ?? null,
+            'custom' => $isCustom ? ($credentials['custom'] ?? null) : null,
+            'start_time_morning' => $isCustom ? null : ($credentials['start_time'] ?? null),
+            'end_time_morning' => $isCustom ? null : ($credentials['end_time'] ?? null),
+            'start_time_afternoon' => $isCustom ? null : ($credentials['start_time_afternoon'] ?? null),
+            'end_time_afternoon' => $isCustom ? null : ($credentials['end_time_afternoon'] ?? null),
         ]);
 
         return response()->json(['message' => 'Modification réussie'], 200);

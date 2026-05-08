@@ -47,16 +47,45 @@
             </button>
         </div>
 
-        <div class="flex flex-wrap justify-end mb-4 gap-2">
-            <a href="{{ route('planning.export.pdf', $exportParams) }}" class="btn bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 text-sm">
-                <i class="fa-solid fa-file-pdf mr-1"></i>
-                <span class="hidden sm:inline">Télécharger en </span>PDF
-            </a>
-            <a href="{{ route('planning.export', $exportParams) }}" class="btn bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 text-sm">
-                <i class="fa-solid fa-file-excel mr-1"></i>
-                <span class="hidden sm:inline">Télécharger en </span>Excel
-            </a>
+        <div class="flex justify-end mb-4"
+             @student-assignment-changed.window="window.location.reload()">
+            {{-- Modales montées en arrière-plan, ouvertes via événement Alpine --}}
             <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence?->id" />
+            @if(auth()->user()->is_admin() && $currentAgence)
+                <livewire:student-assignment-manager :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence->id" />
+            @endif
+
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button"
+                     class="btn btn-primary tooltip tooltip-left"
+                     data-tip="Options & exports">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                    <span class="hidden md:inline ml-1">Options</span>
+                </div>
+
+                <ul tabindex="0" class="dropdown-content menu menu-md bg-base-100 rounded-box shadow-lg z-10 w-60 p-2 mt-1 border border-base-200">
+                    <li>
+                        <a href="{{ route('planning.export.pdf', $exportParams) }}" class="flex items-center gap-3">
+                            <i class="fa-solid fa-file-pdf w-5 text-red-500"></i>
+                            <span>Télécharger en PDF</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('planning.export', $exportParams) }}" class="flex items-center gap-3">
+                            <i class="fa-solid fa-file-excel w-5 text-green-600"></i>
+                            <span>Télécharger en Excel</span>
+                        </a>
+                    </li>
+                    <li>
+                        <button type="button"
+                                @click="$dispatch('open-planning-email')"
+                                class="flex items-center gap-3">
+                            <i class="fa-solid fa-paper-plane w-5 text-blue-500"></i>
+                            <span>Envoyer par email</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         @php
@@ -80,8 +109,29 @@
 
             $deptLabels = $users
                 ->mapWithKeys(fn($u) => [$u->departements->first()?->letter ?? '?' => $u->departements->first()?->nom ?? '—']);
+
+            $entriesForJs = $planningEntries->map(fn($e) => [
+                'id'                    => $e->id,
+                'user_id'               => $e->user_id,
+                'date'                  => $e->date instanceof \Carbon\Carbon ? $e->date->toDateString() : (string) $e->date,
+                'status'                => $e->status,
+                'demande_conge_status'  => $e->demandeConge?->status,
+                'start_time'            => $e->start_time,
+                'end_time'              => $e->end_time,
+                'start_time_afternoon'  => $e->start_time_afternoon,
+                'end_time_afternoon'    => $e->end_time_afternoon,
+                'custom'                => $e->custom,
+            ])->values();
+
+            $userNamesForJs = $users->mapWithKeys(fn($u) => [$u->id => trim($u->name . ' ' . $u->firstname)]);
         @endphp
 
+        <div x-data="adminPlanningGrid({
+            entries: {{ json_encode($entriesForJs) }},
+            userNames: {{ json_encode($userNamesForJs) }},
+            week: {{ $selectedWeek }},
+            year: {{ $selectedYear }}
+        })">
         <div class="overflow-x-auto -mx-4 px-4">
         <div class="grid gap-1 min-w-[640px]" style="grid-template-columns: minmax(120px,160px) repeat(6, 1fr);">
             {{-- En-tête : colonne nom --}}
@@ -110,14 +160,26 @@
                         default => 'bg-gray-100 text-gray-700',
                     };
                 @endphp
-                <div class="col-span-7 {{ $deptBg }} font-bold text-sm px-3 py-1 border rounded mt-2">
-                    {{ $deptLabels[$type] ?? $type }}
+                <div class="col-span-7 {{ $deptBg }} font-bold text-sm px-3 py-1 border rounded mt-2 flex items-center justify-between">
+                    <span>{{ $deptLabels[$type] ?? $type }}</span>
+                    @if(auth()->user()->is_admin())
+                        <button type="button"
+                                @click="$dispatch('open-student-assignment', { letter: '{{ $type }}' })"
+                                class="btn btn-xs btn-ghost tooltip tooltip-left"
+                                data-tip="Assigner un étudiant">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Une ligne par utilisateur du groupe --}}
                 @foreach($usersInGroup->sortBy('name') as $user)
+                    @php $isStudent = str_contains((string) ($user->acces_level ?? ''), 'ET'); @endphp
                     {{-- Colonne nom --}}
-                    <div class="border p-2 rounded bg-gray-50 flex items-center">
+                    <div class="border p-2 rounded bg-gray-50 flex items-center gap-1.5">
+                        @if($isStudent)
+                            <i class="fa-solid fa-user-graduate text-indigo-500 text-xs tooltip" data-tip="Étudiant" title="Étudiant"></i>
+                        @endif
                         <span class="text-sm font-medium">{{ $user->name }} {{ $user->firstname }}</span>
                     </div>
 
@@ -131,18 +193,23 @@
                         if ($isHoliday) {
                             $bgClasses = 'bg-teal-200';
                             $textColorClasses = 'text-teal-900';
+                            $customBgStyle = '';
                         } elseif ($entry) {
-                            $bgClasses = match([$user->departements->first()?->letter, $entry->status != 'bureau']) {
-                                ['I', false] => 'bg-orange-100',
-                                ['I', true]  => 'bg-gray-400',
-                                ['C', false] => 'bg-sky-200',
-                                ['C', true]  => 'bg-gray-400',
-                                ['B', false] => 'bg-lime-200',
-                                ['B', true]  => 'bg-gray-400',
-                                ['S', false] => 'bg-orange-400',
-                                ['S', true]  => 'bg-gray-400',
-                                default      => 'bg-white',
-                            };
+                            $isAbsent = !in_array($entry->status, ['bureau', 'tele_travail', 'custom']);
+                            $bgClasses = $entry->status === 'custom'
+                                ? ''
+                                : match([$user->departements->first()?->letter, $isAbsent]) {
+                                    ['I', false] => 'bg-orange-100',
+                                    ['I', true]  => 'bg-gray-400',
+                                    ['C', false] => 'bg-sky-200',
+                                    ['C', true]  => 'bg-gray-400',
+                                    ['B', false] => 'bg-lime-200',
+                                    ['B', true]  => 'bg-gray-400',
+                                    ['S', false] => 'bg-orange-400',
+                                    ['S', true]  => 'bg-gray-400',
+                                    default      => 'bg-white',
+                                };
+                            $customBgStyle = '';
                             $textColorClasses = match($entry->status ?? null) {
                                 'recup'        => 'text-red-700',
                                 'indisponible' => 'text-red-700',
@@ -153,17 +220,25 @@
                         } else {
                             $bgClasses = 'bg-white';
                             $textColorClasses = 'text-gray-400';
+                            $customBgStyle = '';
                         }
                     @endphp
 
-                    <div class="border p-2 rounded {{ $bgClasses }}">
+                    <div class="border p-2 rounded {{ $bgClasses }} {{ $isHoliday ? '' : 'cursor-pointer hover:ring-2 hover:ring-primary/40 transition' }}"
+                         @if($customBgStyle) style="{{ $customBgStyle }}" @endif
+                         @if(!$isHoliday)
+                            @click="openCell({ userId: {{ $user->id }}, date: '{{ $dateStr }}' })"
+                         @endif>
                         @if($isHoliday)
                             <p class="font-bold text-center text-teal-900">JOUR FÉRIÉ</p>
                             <p class="text-xs text-center italic mt-1 text-teal-900">{{ $holidays[$dateStr] }}</p>
                         @elseif($entry)
                             <p class="text-center mt-1">
                                 <span class="font-semibold text-sm {{ $textColorClasses }}">
-                                    {{ $entry->status === 'tele_travail' ? 'Domicile' : ucfirst($entry->status) }}
+                                    @if($entry->status === 'tele_travail') Domicile
+                                    @elseif($entry->status === 'custom') {{ $entry->custom ?? 'Personnalisé' }}
+                                    @else {{ ucfirst($entry->status) }}
+                                    @endif
                                 </span>
                             </p>
                             @if($entry->demandeConge && $entry->demandeConge->status === 'acceptee')
@@ -171,6 +246,7 @@
                                     {{ $congeTypeLabels[$entry->demandeConge->type] ?? $entry->demandeConge->type }}
                                 </p>
                             @endif
+                            @unless(in_array($entry->status, ['indisponible', 'recup', 'conge', 'maladie']))
                             <ul class="text-xs text-center mt-1 {{ $textColorClasses }}">
                                 @if($entry->start_time && $entry->end_time)
                                     <li>{{ $entry->start_time }} à {{ $entry->end_time }}</li>
@@ -179,6 +255,7 @@
                                     <li>{{ $entry->start_time_afternoon }} à {{ $entry->end_time_afternoon }}</li>
                                 @endif
                             </ul>
+                            @endunless
                         @else
                             <p class="text-xs text-center text-gray-300 italic">—</p>
                         @endif
@@ -188,6 +265,45 @@
             @endforeach
         </div>
         </div>{{-- /overflow-x-auto --}}
+
+        @include('partials.planning-day-modal')
+        </div>{{-- /x-data adminPlanningGrid --}}
     </div>
 </div>
+
+@push('scripts')
+<script>
+    function adminPlanningGrid(opts) {
+        return Object.assign({}, dayModalMixin({
+            isAdmin: true,
+            defaults: {
+                start: '09:00', end: '12:30',
+                start_afternoon: '13:00', end_afternoon: '16:30',
+            },
+        }), {
+            allEntries: opts.entries || [],
+            userNames: opts.userNames || {},
+            week: opts.week,
+            year: opts.year,
+
+            findEntry(userId, date) {
+                return this.allEntries.find(e => e.user_id == userId && e.date === date) || null;
+            },
+
+            openCell({ userId, date }) {
+                const entry = this.findEntry(userId, date);
+                this.openDayModalFor({
+                    userId: userId,
+                    userName: this.userNames[userId] || '',
+                    date: date,
+                    entry: entry,
+                });
+            },
+
+            afterSubmit() { window.location.reload(); },
+            afterDelete() { window.location.reload(); },
+        });
+    }
+</script>
+@endpush
 @endsection

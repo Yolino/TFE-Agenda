@@ -77,8 +77,10 @@ class AdminController extends Controller
 
     public function planning(Request $request)
     {
-        $selectedWeek = $request->input('week', now()->format('W'));
-        $selectedYear = $request->input('year', now()->year);
+        // Par défaut on affiche la semaine suivante (l'admin prépare le planning à venir).
+        $defaultDate = now()->addWeek();
+        $selectedWeek = $request->input('week', $defaultDate->format('W'));
+        $selectedYear = $request->input('year', $defaultDate->isoWeekYear);
 
         $selectedAgenceId = $this->resolveCurrentAgenceId($request);
         $currentAgence    = $selectedAgenceId ? Agence::with('societe')->find($selectedAgenceId) : null;
@@ -125,6 +127,7 @@ class AdminController extends Controller
         $planningEntries = collect();
 
         foreach ($users as $user) {
+            $isStudent = str_contains((string) ($user->acces_level ?? ''), 'ET');
             $userEntriesByDate = ($allEntriesByUser->get($user->id) ?? collect())->keyBy('date');
             $templatesByDay = $user->planningTemplates->keyBy('day_of_week');
 
@@ -136,6 +139,12 @@ class AdminController extends Controller
                 }
 
                 if ($userEntriesByDate->has($dateStr)) {
+                    continue;
+                }
+
+                // Solution A : pas d'auto-création depuis template pour les étudiants
+                // (l'admin les assigne manuellement via la modale "+" du département)
+                if ($isStudent) {
                     continue;
                 }
 
@@ -160,6 +169,13 @@ class AdminController extends Controller
 
             $planningEntries = $planningEntries->merge($userEntriesByDate->values());
         }
+
+        // Solution A : un étudiant n'apparaît dans la grille que s'il a ≥1 entrée pour la semaine
+        $studentIdsWithEntries = $planningEntries->pluck('user_id')->unique();
+        $users = $users->filter(function ($u) use ($studentIdsWithEntries) {
+            $isStudent = str_contains((string) ($u->acces_level ?? ''), 'ET');
+            return !$isStudent || $studentIdsWithEntries->contains($u->id);
+        })->values();
 
         $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
         $planningEntries = $planningEntries->sort(function ($a, $b) use ($usersById, $typeOrder) {
@@ -310,30 +326,34 @@ class AdminController extends Controller
             ? $this->userIdsInAgence($selectedAgenceId)
             : collect();
 
-        $planningEntries = Planning::whereIn('date', $daysInWeek->map->toDateString())
+        // Approche user-centric : on charge TOUS les utilisateurs actifs de l'agence,
+        // même ceux sans entrée pour la semaine, pour que le tableau soit complet.
+        $users = User::with(['profile', 'departements', 'agences.societe'])
+            ->where('actif', true)
+            ->whereIn('id', $userIdsInAgence)
+            ->get();
+
+        // Entrées indexées par user_id pour lookup rapide
+        $planningEntriesByUser = Planning::whereIn('date', $daysInWeek->map->toDateString())
             ->whereIn('user_id', $userIdsInAgence)
-            ->with(['user.profile', 'user.departements', 'user.agences.societe'])
             ->get()
-            ->filter(fn($entry) => $entry->user !== null)
-            ->sort(function ($a, $b) {
-                $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
-                $letterA = $a->user->departements->first()?->letter;
-                $letterB = $b->user->departements->first()?->letter;
-
-                $typeComparison = ($typeOrder[$letterA] ?? 99) <=> ($typeOrder[$letterB] ?? 99);
-
-                if ($typeComparison === 0) {
-                    return strcmp($a->user->name, $b->user->name);
-                }
-
-                return $typeComparison;
-            });
+            ->groupBy('user_id');
 
         $years = $daysInWeek->map->year->unique();
         $holidays = [];
         foreach ($years as $y) {
             $holidays += $this->belgianHolidays($y);
         }
+
+        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+
+        $activeUsers = $users
+            ->sortBy([
+                fn($a, $b) => ($typeOrder[$a->departements->first()?->letter] ?? 99) <=> ($typeOrder[$b->departements->first()?->letter] ?? 99),
+                fn($a, $b) => strcmp($a->name, $b->name),
+            ])
+            ->groupBy(fn($u) => $u->departements->first()?->letter ?? '?')
+            ->sortBy(fn($group, $type) => $typeOrder[$type] ?? 99);
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -393,22 +413,32 @@ class AdminController extends Controller
         $sheet->getRowDimension(1)->setRowHeight(30);
 
         $row = 2;
-        foreach ($planningEntries->groupBy(fn($e) => $e->user->departements->first()?->letter ?? '?') as $type => $entriesByType) {
+        foreach ($activeUsers as $type => $usersInGroup) {
             $startRow = $row;
 
-            foreach ($entriesByType->groupBy('user.id') as $userId => $entriesByUser) {
-                $user = $entriesByUser->first()->user;
+            foreach ($usersInGroup->sortBy('name') as $user) {
+                $userEntries = $planningEntriesByUser->get($user->id, collect());
 
                 $typeLabel = $user->departements->first()?->nom ?? '—';
 
                 $sheet->setCellValue('A' . $row, $typeLabel);
-                $sheet->getStyle('A' . $row)->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                    ],
-                ]);
+                $sheet->getStyle('A' . $row)->applyFromArray(['font' => ['bold' => true]]);
                 $sheet->getStyle('A' . $row)->getAlignment()->setTextRotation(90);
-                $sheet->setCellValue('B' . $row, $user->name . ' ' . $user->firstname . "\n" . $user->phone . "\n" . ($user->profile?->fixe ?? ''));
+
+                // Texte enrichi : nom + téléphone + fixe (fixe en rouge gras)
+                $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
+                $phoneStr = (string)($user->phone ?? '');
+                $richText->createText($user->name . ' ' . $user->firstname . "\n" . $phoneStr . "\n");
+
+                $fixeStr = (string)($user->profile?->fixe ?? '');
+                if (!empty($fixeStr)) {
+                    $fixeRun = $richText->createTextRun($fixeStr);
+                    $fixeRun->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
+                    $fixeRun->getFont()->setBold(true);
+                }
+
+                $sheet->setCellValue('B' . $row, $richText);
+                $sheet->getStyle('B' . $row)->applyFromArray(['font' => ['bold' => true]]);
                 $sheet->getStyle('B' . $row)->getAlignment()->setWrapText(true);
 
                 $agencesNames = $user->agences->map(fn($a) => $a->display_name)->implode("\n");
@@ -416,31 +446,13 @@ class AdminController extends Controller
                 $sheet->getStyle('C' . $row)->getAlignment()->setWrapText(true);
                 $sheet->getStyle('C' . $row)->getFont()->setSize(5);
 
-                $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
-                $phoneStr = (string)($user->phone ?? '');
-                $richText->createText($user->name . ' ' . $user->firstname . "\n" . $phoneStr . "\n");
-
-                $fixeStr = (string)($user->profile?->fixe ?? '');
-                if (!empty($fixeStr)) {
-                    $fixeText = $richText->createTextRun($fixeStr);
-                    $fixeText->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
-                    $fixeText->getFont()->setBold(true);
-                }
-
-                $sheet->setCellValue('B' . $row, $richText);
-                $sheet->getStyle('B' . $row)->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                    ],
-                ]);
-
                 foreach ($daysInWeek as $index => $day) {
                     $columnC = Coordinate::stringFromColumnIndex($index * 2 + 4);
                     $columnD = Coordinate::stringFromColumnIndex($index * 2 + 5);
                     $dateStr = $day->toDateString();
                     $isHoliday = isset($holidays[$dateStr]);
 
-                    $entriesForDay = $entriesByUser->where('date', $dateStr);
+                    $entriesForDay = $userEntries->where('date', $dateStr);
 
                     if ($isHoliday) {
                         $sheet->setCellValue($columnC . $row, 'JOUR FÉRIÉ' . "\n" . $holidays[$dateStr]);
@@ -456,63 +468,48 @@ class AdminController extends Controller
                         foreach ($entriesForDay as $entry) {
                             $entryContent = '';
                             if ($entry->status) {
-                                $status = $entry->status === 'tele_travail' ? 'DOMICILE' : strtoupper($entry->status);
+                                $status = match($entry->status) {
+                                    'tele_travail' => 'DOMICILE',
+                                    'custom' => strtoupper($entry->custom ?? 'PERSONNALISÉ'),
+                                    default => strtoupper($entry->status),
+                                };
                                 $entryContent .= $status . "\n";
 
-                                $sheet->getStyle($columnC . $row)->applyFromArray([
-                                    'font' => [
-                                        'italic' => true,
-                                    ],
-                                ]);
+                                $sheet->getStyle($columnC . $row)->applyFromArray(['font' => ['italic' => true]]);
 
                                 if ($status !== 'BUREAU') {
                                     $sheet->getStyle($columnC . $row)->applyFromArray([
-                                        'fill' => [
-                                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                                            'startColor' => [
-                                                'rgb' => 'D0CECE',
-                                            ],
-                                        ],
+                                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D0CECE']],
+                                        'font' => ['bold' => true],
                                     ]);
-                                    $sheet->getStyle($columnC . $row)->applyFromArray([
-                                        'font' => [
-                                            'bold' => true,
-                                        ],
-                                    ]);
-                                    if ($status === 'DOMICILE') {
-                                        $sheet->getStyle($columnC . $row)->applyFromArray([
-                                            'font' => [
-                                                'color' => ['rgb' => '008000'],
-                                            ],
-                                        ]);
-                                    } else {
-                                        $sheet->getStyle($columnC . $row)->applyFromArray([
-                                            'font' => [
-                                                'color' => ['rgb' => 'FF0000'],
-                                            ],
-                                        ]);
-                                    }
+                                    // tele_travail et custom → vert ; absences classiques → rouge
+                                    $colorCode = in_array($entry->status, ['tele_travail', 'custom']) ? '008000' : 'FF0000';
+                                    $sheet->getStyle($columnC . $row)->applyFromArray(['font' => ['color' => ['rgb' => $colorCode]]]);
                                 }
-                                if ($entry->start_time && $entry->end_time) {
+
+                                // custom rejoint les statuts sans horaires dans la cellule
+                                $hideTimes = in_array($entry->status, ['indisponible', 'recup', 'conge', 'maladie', 'custom'], true);
+                                if (!$hideTimes && $entry->start_time && $entry->end_time) {
                                     $startTime = substr($entry->start_time, 0, 2) . 'h' . substr($entry->start_time, 3, 2);
-                                    $endTime = substr($entry->end_time, 0, 2) . 'h' . substr($entry->end_time, 3, 2);
+                                    $endTime   = substr($entry->end_time, 0, 2) . 'h' . substr($entry->end_time, 3, 2);
                                     $entryContent .= $startTime . ' à ' . $endTime;
                                 }
-                                if ($entry->start_time_afternoon && $entry->end_time_afternoon) {
-                                    $startTimeAfternoon = substr($entry->start_time_afternoon, 0, 2) . 'h' . substr($entry->start_time_afternoon, 3, 2);
-                                    $endTimeAfternoon = substr($entry->end_time_afternoon, 0, 2) . 'h' . substr($entry->end_time_afternoon, 3, 2);
-                                    $entryContent .= "\n" . $startTimeAfternoon . ' à ' . $endTimeAfternoon;
+                                if (!$hideTimes && $entry->start_time_afternoon && $entry->end_time_afternoon) {
+                                    $startAft = substr($entry->start_time_afternoon, 0, 2) . 'h' . substr($entry->start_time_afternoon, 3, 2);
+                                    $endAft   = substr($entry->end_time_afternoon, 0, 2) . 'h' . substr($entry->end_time_afternoon, 3, 2);
+                                    $entryContent .= "\n" . $startAft . ' à ' . $endAft;
                                 }
                             }
-
                             $content .= trim($entryContent) . "\n---\n";
                         }
 
                         $content = rtrim($content, "\n---\n");
-
                         $sheet->setCellValue($columnC . $row, $content);
                         $sheet->mergeCells($columnC . $row . ':' . $columnD . $row);
                         $sheet->getStyle($columnC . $row)->getAlignment()->setWrapText(true);
+                    } else {
+                        // Cellule vide — on fusionne quand même les 2 colonnes du jour
+                        $sheet->mergeCells($columnC . $row . ':' . $columnD . $row);
                     }
                 }
 
@@ -527,16 +524,14 @@ class AdminController extends Controller
                 $sheet->getStyle("A{$row}:B{$row}")->applyFromArray([
                     'fill' => [
                         'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                        'startColor' => [
-                            'rgb' => $backgroundColor,
-                        ],
+                        'startColor' => ['rgb' => $backgroundColor],
                     ],
                 ]);
 
                 $row++;
             }
 
-            if ($row - 1 > $startRow) {
+            if ($row - 1 >= $startRow) {
                 $sheet->mergeCells("A{$startRow}:A" . ($row - 1));
                 for ($currentRow = $startRow; $currentRow < $row; $currentRow++) {
                     $sheet->getRowDimension($currentRow)->setRowHeight(50);

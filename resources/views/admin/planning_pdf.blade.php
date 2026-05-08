@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        /* Augmentation globale : 8.5px -> 11px pour améliorer la lisibilité papier */
         body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; }
 
-        /* Marges gauche/droite/bas via wrapper */
         .wrapper { padding: 0 10mm 10mm 10mm; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -54,21 +52,26 @@
         .dept-C, .bg-C { background-color: #dae8fc; color: #1c4587; }
         .dept-I, .bg-I { background-color: #fff2cc; color: #7f6000; }
 
-        /* Cellules jours */
-        .holiday-header { background-color: #99f6e4; color: #134e4a; }
-        .holiday-cell   { background-color: #99f6e4; color: #134e4a; font-weight: bold; }
-        .absent-cell    { background-color: #d0cece; }
+        /* Cellules jours — calquées sur l'Excel */
+        .holiday-header { background-color: #99F6E4; color: #134E4A; }
+        .holiday-cell   { background-color: #99F6E4; color: #134E4A; font-weight: bold; }
 
-        /* Texte statut — la cellule jour utilise la taille body (11px), en gras pour les statuts marquants. */
+        /* Absent = fond gris comme dans l'Excel (#D0CECE) */
+        .absent-cell    { background-color: #D0CECE; }
+
+        /* Texte statut */
         .status-bureau   { font-weight: normal; font-size: 11px; }
+        /* DOMICILE : vert #008000 gras, comme l'Excel */
         .status-domicile { color: #008000; font-weight: bold; font-size: 11px; }
-        .status-absent   { color: #cc0000; font-weight: bold; font-size: 11px; }
+        /* Absences : rouge #FF0000 gras, comme l'Excel */
+        .status-absent   { color: #FF0000; font-weight: bold; font-size: 11px; }
 
         .times       { font-size: 10px; }
         .conge-label { font-size: 10px; font-style: italic; }
         .soc-text    { font-size: 8px; text-align: center; }
         .phone-text  { font-size: 10px; }
-        .fixe-text   { font-size: 10px; color: #cc0000; font-weight: bold; }
+        /* Fixe : rouge #FF0000 gras, comme l'Excel */
+        .fixe-text   { font-size: 10px; color: #FF0000; font-weight: bold; }
         .empty-cell  { color: #bbb; font-size: 11px; }
 
         .user-row td { height: 46px; }
@@ -139,24 +142,36 @@
                             @elseif($entry)
                                 @php
                                     $status      = $entry->status;
+                                    // Fond gris : tout sauf bureau
                                     $isAbsent    = $status !== 'bureau';
-                                    $statusLabel = $status === 'tele_travail' ? 'DOMICILE' : strtoupper($status);
-                                    $textClass   = match($status) {
-                                        'tele_travail' => 'status-domicile',
-                                        'bureau'       => 'status-bureau',
-                                        default        => 'status-absent',
+                                    // Pas d'horaires pour custom (ni pour les absences classiques)
+                                    $hideTimes   = in_array($status, ['indisponible', 'recup', 'conge', 'maladie', 'custom'], true);
+                                    $statusLabel = match($status) {
+                                        'tele_travail' => 'DOMICILE',
+                                        'custom'       => strtoupper($entry->custom ?? 'PERSONNALISÉ'),
+                                        default        => strtoupper($status),
                                     };
+                                    $textClass = match($status) {
+                                        // Domicile & custom : écriture verte
+                                        'tele_travail', 'custom' => 'status-domicile',
+                                        'bureau'                  => 'status-bureau',
+                                        default                   => 'status-absent',
+                                    };
+                                    // Format heure identique à l'Excel : 09h30
+                                    $fmtTime = fn(?string $t): string => $t
+                                        ? substr($t, 0, 2) . 'h' . substr($t, 3, 2)
+                                        : '';
                                 @endphp
                                 <td class="{{ $isAbsent ? 'absent-cell' : '' }}">
                                     <span class="{{ $textClass }}">{{ $statusLabel }}</span>
                                     @if($entry->demandeConge && $entry->demandeConge->status === 'acceptee')
                                         <br><span class="conge-label">{{ $congeTypeLabels[$entry->demandeConge->type] ?? $entry->demandeConge->type }}</span>
                                     @endif
-                                    @if($entry->start_time && $entry->end_time)
-                                        <br><span class="times">{{ substr($entry->start_time,0,5) }} à {{ substr($entry->end_time,0,5) }}</span>
+                                    @if(!$hideTimes && $entry->start_time && $entry->end_time)
+                                        <br><span class="times">{{ $fmtTime($entry->start_time) }} à {{ $fmtTime($entry->end_time) }}</span>
                                     @endif
-                                    @if($entry->start_time_afternoon && $entry->end_time_afternoon)
-                                        <br><span class="times">{{ substr($entry->start_time_afternoon,0,5) }} à {{ substr($entry->end_time_afternoon,0,5) }}</span>
+                                    @if(!$hideTimes && $entry->start_time_afternoon && $entry->end_time_afternoon)
+                                        <br><span class="times">{{ $fmtTime($entry->start_time_afternoon) }} à {{ $fmtTime($entry->end_time_afternoon) }}</span>
                                     @endif
                                 </td>
 
