@@ -177,7 +177,7 @@ class AdminController extends Controller
             return !$isStudent || $studentIdsWithEntries->contains($u->id);
         })->values();
 
-        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $typeOrder = ['D' => 1, 'S' => 2, 'B' => 3, 'C' => 4, 'I' => 5, 'M' => 6, 'O' => 7, 'G' => 8, 'N' => 9, 'F' => 10, 'V' => 11];
         $planningEntries = $planningEntries->sort(function ($a, $b) use ($usersById, $typeOrder) {
             $userA = $usersById->get($a->user_id);
             $userB = $usersById->get($b->user_id);
@@ -345,7 +345,7 @@ class AdminController extends Controller
             $holidays += $this->belgianHolidays($y);
         }
 
-        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $typeOrder = ['D' => 1, 'S' => 2, 'B' => 3, 'C' => 4, 'I' => 5, 'M' => 6, 'O' => 7, 'G' => 8, 'N' => 9, 'F' => 10, 'V' => 11];
 
         $activeUsers = $users
             ->sortBy([
@@ -514,10 +514,17 @@ class AdminController extends Controller
                 }
 
                 $backgroundColor = match ($type) {
-                    'B' => 'A9D08E',
+                    'D' => 'D9D2E9',
                     'S' => 'F4B084',
+                    'B' => 'A9D08E',
                     'C' => 'DDEBF7',
                     'I' => 'FCE4D6',
+                    'M' => 'FFE699',
+                    'O' => 'DEC5A4',
+                    'G' => 'CFD9E4',
+                    'N' => 'A8D4BC',
+                    'F' => 'F4B3C2',
+                    'V' => 'BDD7EE',
                     default => 'FFFFFF',
                 };
 
@@ -596,7 +603,7 @@ class AdminController extends Controller
             ->get()
             ->filter(fn($entry) => $entry->user !== null)
             ->sort(function ($a, $b) {
-                $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+                $typeOrder = ['D' => 1, 'S' => 2, 'B' => 3, 'C' => 4, 'I' => 5, 'M' => 6, 'O' => 7, 'G' => 8, 'N' => 9, 'F' => 10, 'V' => 11];
                 $letterA = $a->user->departements->first()?->letter;
                 $letterB = $b->user->departements->first()?->letter;
                 $typeComparison = ($typeOrder[$letterA] ?? 99) <=> ($typeOrder[$letterB] ?? 99);
@@ -614,7 +621,7 @@ class AdminController extends Controller
             ->whereIn('id', $userIdsInAgence)
             ->get();
 
-        $typeOrder = ['B' => 1, 'S' => 2, 'C' => 3, 'I' => 4];
+        $typeOrder = ['D' => 1, 'S' => 2, 'B' => 3, 'C' => 4, 'I' => 5, 'M' => 6, 'O' => 7, 'G' => 8, 'N' => 9, 'F' => 10, 'V' => 11];
         $congeTypeLabels = [
             'recup' => 'Récup.',
             'conge' => 'Congé (VA)',
@@ -634,10 +641,17 @@ class AdminController extends Controller
             ->mapWithKeys(fn($u) => [$u->departements->first()?->letter ?? '?' => $u->departements->first()?->nom ?? '—']);
 
         $deptColors = [
-            'B' => ['bg' => '#d9ead3', 'text' => '#274e13'],
+            'D' => ['bg' => '#e9e4f8', 'text' => '#4a1870'],
             'S' => ['bg' => '#fce5cd', 'text' => '#783f04'],
+            'B' => ['bg' => '#d9ead3', 'text' => '#274e13'],
             'C' => ['bg' => '#dae8fc', 'text' => '#1c4587'],
             'I' => ['bg' => '#fff2cc', 'text' => '#7f6000'],
+            'M' => ['bg' => '#fff8cc', 'text' => '#7d5a00'],
+            'O' => ['bg' => '#ede3ca', 'text' => '#5a3e1a'],
+            'G' => ['bg' => '#e3ecf2', 'text' => '#2c3e50'],
+            'N' => ['bg' => '#d0ece2', 'text' => '#1a4a3a'],
+            'F' => ['bg' => '#fad8e6', 'text' => '#7a1b3a'],
+            'V' => ['bg' => '#d5e8f9', 'text' => '#1a3060'],
         ];
 
         $html = view('admin.planning_pdf', compact(
