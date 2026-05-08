@@ -28,8 +28,8 @@ class PlanningRequest extends FormRequest
         $adminOnlyStatuses = ['conge', 'css', 'indisponible', 'maladie', 'jour_ferie'];
 
         $allowedStatuses = auth()->check() && auth()->user()->is_admin()
-            ? array_merge($userStatuses, $adminOnlyStatuses)
-            : $userStatuses;
+            ? array_merge($userStatuses, $adminOnlyStatuses, ['custom'])
+            : array_merge($userStatuses, ['custom']);
 
         $userModel = new User();
         $userConnection = $userModel->getConnectionName();
@@ -43,7 +43,8 @@ class PlanningRequest extends FormRequest
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'start_time_afternoon' => 'nullable|date_format:H:i',
-            'end_time_afternoon' => 'nullable|date_format:H:i'
+            'end_time_afternoon' => 'nullable|date_format:H:i',
+            'custom' => 'nullable|string|max:255',
         ];
     }
 
