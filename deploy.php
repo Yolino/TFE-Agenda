@@ -2,8 +2,9 @@
 namespace Deployer;
 require 'recipe/laravel.php';
 
-// Spécifier le chemin de Composer sur le serveur
-set('bin/composer', '/opt/php8.2/bin/composer');
+// Spécifier les chemins PHP/Composer sur le serveur (doit être cohérent)
+set('bin/php', '/opt/php8.4/bin/php');
+set('bin/composer', '/opt/php8.4/bin/composer');
 
 // ✅ POUR WINDOWS
 set('use_rsync', false);           // Pas de rsync
@@ -67,6 +68,20 @@ after('deploy:symlink', 'artisan:view:cache');
 after('deploy:symlink', 'artisan:optimize');
 
 after('deploy:failed', 'deploy:unlock');
+
+task('debug:info', function () {
+    writeln('🔍 <fg=cyan>Debugging deployment environment...</>');
+    writeln('📍 Current directory: ' . run('pwd'));
+    writeln('👤 Current user: ' . run('whoami'));
+    writeln('🐘 PHP version: ' . run('php --version | head -1'));
+    writeln('📦 Composer version: ' . run('/opt/php8.4/bin/composer --version'));
+    writeln('🌿 Git version: ' . run('git --version'));
+    writeln('💾 Disk space: ' . run('df -h . | tail -1'));
+    writeln('✅ <fg=green>Debug info completed!</>');
+})->desc('Debug deployment environment');
+
+// Exécuter le debug avant les tâches critiques
+before('deploy:update_code', 'debug:info');
 
 task('deploy:success_message', function () {
     writeln('');

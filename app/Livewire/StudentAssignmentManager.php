@@ -50,7 +50,7 @@ class StudentAssignmentManager extends Component
     private function studentsQuery(): Builder
     {
         $userIdsInAgence = $this->agenceId
-            ? DB::connection('mysql')->table('agences_users')
+            ? DB::connection('bti')->table('pivot_a_u')
                 ->where('agence_id', $this->agenceId)
                 ->pluck('user_id')
             : collect();

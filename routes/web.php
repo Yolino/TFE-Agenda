@@ -21,9 +21,6 @@ use App\Http\Controllers\JustificatifAbsenceController;
 |
 */
 
-// DASHBOARD
-Route::view('/dashboard', 'dashboard')->name('dashboard')->middleware('auth');
-
 // PARAMETRES
 Route::view('/parametres', 'parametres')->name('parametres')->middleware('auth');
 
@@ -83,6 +80,9 @@ Route::prefix('/admin')->name('admin.')->middleware('auth', 'is_admin')->group(f
     Route::get('/conges', function () {
         return view('admin.conges');
     })->name('conges');
+    Route::get('/absences', function () {
+        return view('admin.absences');
+    })->name('absences');
 });
 
 // CRON

@@ -75,7 +75,7 @@
         <a href="{{ url()->previous() }}" class="btn btn-ghost">
             <i class="fa-solid fa-arrow-left mr-1"></i> Retour
         </a>
-        <a href="{{ route('dashboard') }}" class="btn {{ $v['btnClass'] }} text-white">
+        <a href="{{ route('mon-planning.index') }}" class="btn {{ $v['btnClass'] }} text-white">
             <i class="fa-solid {{ $v['btnIcon'] }} mr-1"></i> Retour à l'accueil
         </a>
     </div>

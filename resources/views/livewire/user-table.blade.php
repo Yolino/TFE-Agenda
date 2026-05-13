@@ -2,12 +2,12 @@
 
     {{-- Barre d'actions --}}
     <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
-        <button @click="openCreateForm = true" class="btn btn-success btn-sm">
+        <button @click="openCreateForm = true" class="btn btn-success">
             <i class="fa-solid fa-user-plus mr-2"></i>Créer un utilisateur
         </button>
         <input type="text" wire:keydown.debounce.500ms="searchNow" wire:model.defer="search"
             placeholder="Rechercher un utilisateur..."
-            class="input input-bordered input-sm w-full max-w-xs" />
+            class="input input-bordered w-full max-w-xs" />
     </div>
 
     {{-- Filtres --}}
@@ -133,9 +133,9 @@
     {{-- ========================= MODAL CRÉATION ========================= --}}
     <div x-show="openCreateForm" x-cloak x-transition
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-        <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative max-h-screen overflow-y-auto">
+        <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative">
             <button @click="openCreateForm = false"
-                    class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+                    class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-10">✕</button>
             <div class="p-6">
                 <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
                     <i class="fa-solid fa-user-plus text-success"></i> Créer un utilisateur
@@ -147,13 +147,13 @@
                             <label class="label"><span class="label-text font-semibold">Nom *</span></label>
                             <input type="text" wire:model.defer="name"
                                    class="input input-bordered @error('name') input-error @enderror" />
-                            @error('name') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('name') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text font-semibold">Prénom *</span></label>
                             <input type="text" wire:model.defer="firstname"
                                    class="input input-bordered @error('firstname') input-error @enderror" />
-                            @error('firstname') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('firstname') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -162,14 +162,14 @@
                             <label class="label"><span class="label-text font-semibold">Email *</span></label>
                             <input type="email" wire:model.defer="email"
                                    class="input input-bordered @error('email') input-error @enderror" />
-                            @error('email') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('email') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Alias</span></label>
                             <input type="text" wire:model.defer="alias"
                                    class="input input-bordered @error('alias') input-error @enderror"
                                    placeholder="Ex: jdupont" />
-                            @error('alias') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('alias') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -183,7 +183,7 @@
                                     <option value="{{ $agence->id }}">{{ $agence->display_name }}</option>
                                 @endforeach
                             </select>
-                            @error('agence_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('agence_id') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text font-semibold">Département *</span></label>
@@ -194,15 +194,23 @@
                                     <option value="{{ $departement->id }}">{{ $departement->nom }}</option>
                                 @endforeach
                             </select>
-                            @error('departement_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('departement_id') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
-                    <div class="form-control mb-4">
-                        <label class="label cursor-pointer">
-                            <span class="label-text font-semibold">Administrateur</span>
-                            <input type="checkbox" wire:model.defer="isAdmin" class="toggle toggle-error" />
-                        </label>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <span class="label-text font-semibold">Administrateur</span>
+                                <input type="checkbox" wire:model.defer="isAdmin" class="toggle toggle-error" />
+                            </label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <span class="label-text font-semibold">Étudiant</span>
+                                <input type="checkbox" wire:model.defer="isEtudiant" class="toggle toggle-info" />
+                            </label>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -210,13 +218,13 @@
                             <label class="label"><span class="label-text">Téléphone</span></label>
                             <input type="tel" wire:model.defer="phone"
                                    class="input input-bordered @error('phone') input-error @enderror" />
-                            @error('phone') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('phone') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Fixe</span></label>
                             <input type="tel" wire:model.defer="fixe"
                                    class="input input-bordered @error('fixe') input-error @enderror" />
-                            @error('fixe') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('fixe') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -224,7 +232,7 @@
                         <label class="label"><span class="label-text">Remarque</span></label>
                         <textarea wire:model.defer="remarque" rows="2"
                                   class="textarea textarea-bordered @error('remarque') textarea-error @enderror"></textarea>
-                        @error('remarque') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        @error('remarque') <span class="text-error text-xs">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="flex justify-end gap-3">
@@ -243,9 +251,9 @@
     {{-- ========================= MODAL ÉDITION ========================= --}}
     <div x-show="openEditForm" x-cloak x-transition
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-        <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative max-h-screen overflow-y-auto">
+        <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative">
             <button @click="openEditForm = false"
-                    class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+                    class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-10">✕</button>
             <div class="p-6">
                 <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
                     <i class="fa-solid fa-user-pen text-primary"></i> Modifier l'utilisateur
@@ -257,21 +265,21 @@
                             <label class="label"><span class="label-text font-semibold">Nom *</span></label>
                             <input type="text" wire:model.defer="selectedUser.name"
                                    class="input input-bordered @error('selectedUser.name') input-error @enderror" />
-                            @error('selectedUser.name') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.name') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text font-semibold">Prénom *</span></label>
                             <input type="text" wire:model.defer="selectedUser.firstname"
                                    class="input input-bordered @error('selectedUser.firstname') input-error @enderror" />
-                            @error('selectedUser.firstname') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.firstname') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
-                    <div class="form-control mb-4">
+                    <div class="form-control mb-2">
                         <label class="label"><span class="label-text font-semibold">Email *</span></label>
                         <input type="email" wire:model.defer="selectedUser.email"
                                class="input input-bordered @error('selectedUser.email') input-error @enderror" />
-                        @error('selectedUser.email') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        @error('selectedUser.email') <span class="text-error text-xs">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -284,7 +292,7 @@
                                     <option value="{{ $agence->id }}">{{ $agence->display_name }}</option>
                                 @endforeach
                             </select>
-                            @error('selectedUser.agence_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.agence_id') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text font-semibold">Département *</span></label>
@@ -295,15 +303,23 @@
                                     <option value="{{ $departement->id }}">{{ $departement->nom }}</option>
                                 @endforeach
                             </select>
-                            @error('selectedUser.departement_id') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.departement_id') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
-                    <div class="form-control mb-4">
-                        <label class="label cursor-pointer">
-                            <span class="label-text font-semibold">Administrateur</span>
-                            <input type="checkbox" wire:model.defer="selectedUser.isAdmin" class="toggle toggle-error" />
-                        </label>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <span class="label-text font-semibold">Administrateur</span>
+                                <input type="checkbox" wire:model.defer="selectedUser.isAdmin" class="toggle toggle-error" />
+                            </label>
+                        </div>
+                        <div class="form-control">
+                            <label class="label cursor-pointer">
+                                <span class="label-text font-semibold">Étudiant</span>
+                                <input type="checkbox" wire:model.defer="selectedUser.isEtudiant" class="toggle toggle-info" />
+                            </label>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -311,13 +327,13 @@
                             <label class="label"><span class="label-text">Téléphone</span></label>
                             <input type="tel" wire:model.defer="selectedUser.phone"
                                    class="input input-bordered @error('selectedUser.phone') input-error @enderror" />
-                            @error('selectedUser.phone') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.phone') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Fixe</span></label>
                             <input type="tel" wire:model.defer="selectedUser.fixe"
                                    class="input input-bordered @error('selectedUser.fixe') input-error @enderror" />
-                            @error('selectedUser.fixe') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('selectedUser.fixe') <span class="text-error text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -325,7 +341,7 @@
                         <label class="label"><span class="label-text">Remarque</span></label>
                         <textarea wire:model.defer="selectedUser.remarque" rows="2"
                                   class="textarea textarea-bordered @error('selectedUser.remarque') textarea-error @enderror"></textarea>
-                        @error('selectedUser.remarque') <span class="text-error text-xs mt-1">{{ $message }}</span> @enderror
+                        @error('selectedUser.remarque') <span class="text-error text-xs">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="flex justify-end gap-3">

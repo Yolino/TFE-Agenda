@@ -36,12 +36,12 @@
                 if ($currentAgence) { $exportParams['agence_id'] = $currentAgence->id; }
             @endphp
 
-            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-3 py-2 rounded">
+            <button @click="window.location.href='?week={{ $previousWeek }}&year={{ $previousYear }}{{ $agenceQs }}'" class="btn btn-primary">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span class="hidden sm:inline ml-1">Semaine précédente</span>
             </button>
             <h2 class="text-base sm:text-xl font-bold text-center">Sem. {{ $selectedWeek }} — {{ $selectedYear }}</h2>
-            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}{{ $agenceQs }}'" class="btn bg-blue-500 text-white px-3 py-2 rounded">
+            <button @click="window.location.href='?week={{ $nextWeek }}&year={{ $nextYear }}{{ $agenceQs }}'" class="btn btn-primary">
                 <span class="hidden sm:inline mr-1">Semaine suivante</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
