@@ -23,6 +23,6 @@ export default {
     plugins: [
         require("daisyui"),
         require("@tailwindcss/typography"),
-        require("@tailwindcss/forms"),
+        require("@tailwindcss/forms")({ strategy: "class" }),
     ],
 };

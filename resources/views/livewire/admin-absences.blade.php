@@ -41,27 +41,17 @@
     </div>
 
     {{-- Filtre Agence --}}
-    <div class="mb-4 flex flex-wrap gap-2 items-center"
-         x-data="{ open: false, label: @js($filterAgenceId ? optional($agences->firstWhere('id', $filterAgenceId))->display_name : 'Toutes les agences') }">
+    <div class="mb-4 flex flex-wrap gap-2 items-center">
         <span class="text-sm font-semibold">Agence :</span>
-        <div class="relative" x-cloak>
-            <button class="btn btn-accent btn-sm" @click="open = !open" x-text="label"></button>
-            <div x-show="open" x-transition.opacity @click.away="open = false"
-                 class="absolute bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 z-10 min-w-56 max-h-72 overflow-y-auto">
-                <button wire:click.prevent="filterByAgence(null)"
-                        @click="label = 'Toutes les agences'; open = false"
-                        class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">
-                    Toutes les agences
-                </button>
-                @foreach($agences as $agence)
-                    <button wire:click.prevent="filterByAgence({{ $agence->id }})"
-                            @click="label = @js($agence->display_name); open = false"
-                            class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">
-                        {{ $agence->display_name }}
-                    </button>
-                @endforeach
-            </div>
-        </div>
+        <x-agence-autocomplete
+            :agences="$agences"
+            :selected="$filterAgenceId"
+            placeholder="Toutes les agences"
+            nullable
+            null-label="Toutes les agences"
+            input-class="input input-bordered input-sm w-64"
+            dropdown-class="w-64"
+            @selected="$wire.filterByAgence($event.detail.value)" />
     </div>
 
     {{-- Tableau groupé par agence --}}
