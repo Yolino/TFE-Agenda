@@ -25,7 +25,7 @@ class Agence extends Model
     {
         return $this->belongsToMany(
             User::class,
-            $this->localPivotTable(),
+            'pivot_a_u',
             'agence_id',
             'user_id'
         );
@@ -39,11 +39,4 @@ class Agence extends Model
         return trim(($this->alias ?? '') . ' ' . $societeAlias);
     }
 
-    protected function localPivotTable(): string
-    {
-        $default = config('database.default');
-        $database = config("database.connections.{$default}.database");
-
-        return "{$database}.agences_users";
-    }
 }

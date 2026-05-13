@@ -30,6 +30,7 @@ class UserTable extends Component
         'email'          => '',
         'phone'          => '',
         'isAdmin'        => false,
+        'isEtudiant'     => false,
         'fixe'           => '',
         'remarque'       => '',
         'agence_id'      => null,
@@ -50,6 +51,7 @@ class UserTable extends Component
     public $email;
     public $phone;
     public $isAdmin = false;
+    public $isEtudiant = false;
     public $fixe;
     public $remarque;
     public $agence_id;
@@ -83,6 +85,7 @@ class UserTable extends Component
     {
         $this->reset(['name', 'firstname', 'alias', 'email', 'phone', 'fixe', 'remarque', 'agence_id', 'departement_id']);
         $this->isAdmin = false;
+        $this->isEtudiant = false;
         $this->openCreateForm = true;
         $this->openEditForm = false;
     }
@@ -98,6 +101,7 @@ class UserTable extends Component
             'email'          => $user->email,
             'phone'          => $user->phone ?? '',
             'isAdmin'        => $user->is_admin(),
+            'isEtudiant'     => $user->is_etudiant(),
             'fixe'           => $user->profile?->fixe ?? '',
             'remarque'       => $user->profile?->remarque ?? '',
             'agence_id'      => $user->agences->first()?->id,
@@ -125,6 +129,7 @@ class UserTable extends Component
             ],
             'selectedUser.phone'          => 'nullable|string|max:20',
             'selectedUser.isAdmin'        => 'boolean',
+            'selectedUser.isEtudiant'     => 'boolean',
             'selectedUser.fixe'           => 'nullable|string|max:20',
             'selectedUser.remarque'       => 'nullable|string|max:500',
             'selectedUser.agence_id'      => 'required|integer|exists:bti.agences,id',
@@ -147,7 +152,7 @@ class UserTable extends Component
                 'firstname'   => $data['firstname'],
                 'email'       => $data['email'],
                 'phone'       => $data['phone'],
-                'acces_level' => $this->buildAccesLevel($user->acces_level, (bool) $data['isAdmin']),
+                'acces_level' => $this->buildAccesLevel((bool) $data['isEtudiant']),
             ]);
 
             UserAgendaProfile::updateOrCreate(
@@ -155,6 +160,7 @@ class UserTable extends Component
                 [
                     'fixe'     => $data['fixe'],
                     'remarque' => $data['remarque'],
+                    'is_admin' => (bool) $data['isAdmin'],
                 ]
             );
 
@@ -187,6 +193,7 @@ class UserTable extends Component
             'email'          => 'required|email|unique:bti.users,email',
             'phone'          => 'nullable|string|max:20',
             'isAdmin'        => 'boolean',
+            'isEtudiant'     => 'boolean',
             'fixe'           => 'nullable|string|max:20',
             'remarque'       => 'nullable|string|max:500',
             'agence_id'      => 'required|integer|exists:bti.agences,id',
@@ -209,7 +216,7 @@ class UserTable extends Component
                 'email'       => $validated['email'],
                 'phone'       => $validated['phone'] ?? null,
                 'password'    => bcrypt(Str::random(40)),
-                'acces_level' => $validated['isAdmin'] ? 'A' : 'U',
+                'acces_level' => $this->buildAccesLevel((bool) ($validated['isEtudiant'] ?? false)),
                 'actif'       => true,
             ]);
 
@@ -217,6 +224,7 @@ class UserTable extends Component
                 'user_id'  => $user->id,
                 'fixe'     => $validated['fixe'] ?? null,
                 'remarque' => $validated['remarque'] ?? null,
+                'is_admin' => (bool) ($validated['isAdmin'] ?? false),
             ]);
 
             $user->agences()->attach($validated['agence_id']);
@@ -245,7 +253,7 @@ class UserTable extends Component
             $emailSent = false;
         }
 
-        $this->reset('name', 'firstname', 'alias', 'email', 'phone', 'isAdmin', 'fixe', 'remarque', 'agence_id', 'departement_id', 'openCreateForm');
+        $this->reset('name', 'firstname', 'alias', 'email', 'phone', 'isAdmin', 'isEtudiant', 'fixe', 'remarque', 'agence_id', 'departement_id', 'openCreateForm');
 
         if ($emailSent) {
             $this->dispatch('swal',
@@ -262,18 +270,9 @@ class UserTable extends Component
         }
     }
 
-    private function buildAccesLevel(?string $current, bool $isAdmin): string
+    private function buildAccesLevel(bool $isEtudiant): string
     {
-        $current = (string) $current;
-        $hasA = str_contains($current, 'A');
-
-        if ($isAdmin && !$hasA) {
-            return $current . 'A';
-        }
-        if (!$isAdmin && $hasA) {
-            return str_replace('A', '', $current) ?: 'U';
-        }
-        return $current !== '' ? $current : 'U';
+        return $isEtudiant ? User::ROLE_ETUDIANT : 'U';
     }
 
     private function createDefaultPlanningTemplates(User $user): void
@@ -378,15 +377,21 @@ class UserTable extends Component
         }
 
         if ($this->filterIsAdmin === 'admin') {
-            $query->where('acces_level', 'like', '%A%');
+            $adminIds = DB::connection('mysql')
+                ->table('user_agenda_profiles')
+                ->where('is_admin', true)
+                ->pluck('user_id');
+            $query->whereIn('id', $adminIds);
         } elseif ($this->filterIsAdmin === 'user') {
-            $query->where(function ($q) {
-                $q->whereNull('acces_level')->orWhere('acces_level', 'not like', '%A%');
-            });
+            $adminIds = DB::connection('mysql')
+                ->table('user_agenda_profiles')
+                ->where('is_admin', true)
+                ->pluck('user_id');
+            $query->whereNotIn('id', $adminIds);
         }
 
         if (isset($this->filterAgenceId)) {
-            $userIds = DB::connection('mysql')->table('agences_users')
+            $userIds = DB::connection('bti')->table('pivot_a_u')
                 ->where('agence_id', $this->filterAgenceId)
                 ->pluck('user_id');
             $query->whereIn('id', $userIds);

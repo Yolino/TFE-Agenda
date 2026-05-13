@@ -21,8 +21,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $loginRequest->session()->regenerate();
-            // Redirect to 'dashboard' if the intended route is not defined
-            return redirect()->intended(route('dashboard'))->with('success', 'Vous êtes connecté.');
+            return redirect()->intended(route('mon-planning.index'))->with('success', 'Vous êtes connecté.');
         }
 
         return to_route('auth.index')->withErrors(['errorsCredentials' => 'Les identifiants sont incorrectes.'])->onlyInput('email');

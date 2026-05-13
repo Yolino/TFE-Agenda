@@ -16,7 +16,9 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $connection = 'bti';
+    public const ROLE_ETUDIANT = 'ET';
+
+protected $connection = 'bti';
 
     protected $table = 'users';
 
@@ -51,12 +53,9 @@ class User extends Authenticatable
 
     public function agences(): BelongsToMany
     {
-        $default = config('database.default');
-        $localDb = config("database.connections.{$default}.database");
-
         return $this->belongsToMany(
             Agence::class,
-            "{$localDb}.agences_users",
+            'pivot_a_u',
             'user_id',
             'agence_id'
         );
@@ -77,6 +76,11 @@ class User extends Authenticatable
         return $this->hasMany(PlanningTemplate::class);
     }
 
+    protected function agencesPivotTable(): string
+    {
+        return 'pivot_a_u';
+    }
+
     public function plannings(): HasMany
     {
         return $this->hasMany(Planning::class);
@@ -84,7 +88,12 @@ class User extends Authenticatable
 
     public function is_admin(): bool
     {
-        return str_contains((string) $this->acces_level, 'A');
+        return (bool) ($this->profile?->is_admin);
+    }
+
+    public function is_etudiant(): bool
+    {
+        return $this->acces_level === self::ROLE_ETUDIANT;
     }
 
     public function getFonctionAttribute(): ?string

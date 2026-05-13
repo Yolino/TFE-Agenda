@@ -41,11 +41,11 @@ class AdminController extends Controller
     }
 
     /**
-     * Renvoie les user_id liés à une agence via le pivot local agences_users.
+     * Renvoie les user_id liés à une agence via le pivot bti pivot_a_u.
      */
     private function userIdsInAgence(int $agenceId): \Illuminate\Support\Collection
     {
-        return DB::connection('mysql')->table('agences_users')
+        return DB::connection('bti')->table('pivot_a_u')
             ->where('agence_id', $agenceId)
             ->pluck('user_id');
     }
@@ -85,10 +85,12 @@ class AdminController extends Controller
         $selectedAgenceId = $this->resolveCurrentAgenceId($request);
         $currentAgence    = $selectedAgenceId ? Agence::with('societe')->find($selectedAgenceId) : null;
 
+        $ids = $this->userIdsInAgence($currentAgence->id);
+        
         $users = $currentAgence
             ? User::with(['planningTemplates', 'profile', 'departements'])
                 ->where('actif', true)
-                ->whereIn('id', $this->userIdsInAgence($currentAgence->id))
+                ->whereIn('id', $ids)
                 ->get()
             : collect();
 

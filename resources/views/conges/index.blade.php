@@ -130,8 +130,8 @@
                                     <a href="{{ route('mes-conges.send', ['id' => $conge->id]) }}" class="send-conge-link" data-send-url="{{ route('mes-conges.send', ['id' => $conge->id]) }}">
                                         <button type="button" class="btn btn-sm btn-success ml-1 tooltip" data-tip="Envoyer"><i class="fa-duotone fa-envelope"></i></button>
                                     </a>
-                                    <a href="{{ route('mes-conges.destroy', ['id' => $conge->id]) }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')">
-                                        <button class="btn btn-sm btn-error ml-1 tooltip" data-tip="Supprimer">
+                                    <a href="{{ route('mes-conges.destroy', ['id' => $conge->id]) }}" class="delete-conge-link" data-delete-url="{{ route('mes-conges.destroy', ['id' => $conge->id]) }}">
+                                        <button type="button" class="btn btn-sm btn-error ml-1 tooltip" data-tip="Supprimer">
                                             <i class="fa-duotone fa-trash-can"></i>
                                         </button>
                                     </a>
@@ -444,6 +444,32 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         window.location.href = cancelUrl;
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.delete-conge-link').forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+
+                const deleteUrl = this.getAttribute('data-delete-url');
+
+                Swal.fire({
+                    title: 'Supprimer la demande ?',
+                    text: 'Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est définitive.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Oui, supprimer',
+                    cancelButtonText: 'Annuler',
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'btn btn-error',
+                        cancelButton: 'btn btn-neutral ml-3',
+                    },
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = deleteUrl;
                     }
                 });
             });

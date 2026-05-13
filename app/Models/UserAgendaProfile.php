@@ -16,10 +16,12 @@ class UserAgendaProfile extends Model
         'fixe',
         'remarque',
         'actif',
+        'is_admin',
     ];
 
     protected $casts = [
-        'actif' => 'boolean',
+        'actif'    => 'boolean',
+        'is_admin' => 'boolean',
     ];
 
     public function user(): BelongsTo
