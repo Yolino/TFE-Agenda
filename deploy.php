@@ -25,6 +25,7 @@ task('upload:assets', function () {
 });
 
 // Exécuter avant le symlink
+before('upload:assets', 'build:assets');
 before('deploy:symlink', 'build:assets');
 before('deploy:symlink', 'upload:assets');
 

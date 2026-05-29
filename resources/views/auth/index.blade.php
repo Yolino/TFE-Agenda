@@ -66,6 +66,14 @@
                         Se connecter
                     </button>
                 </form>
+
+                <div class="divider text-xs text-base-content/50">ou</div>
+
+                <a href="https://agenda.btibel.app/sso/login/microsoft"
+                   class="btn btn-outline w-full text-base font-semibold">
+                    <i class="fa-brands fa-microsoft"></i>
+                    Connexion avec Microsoft
+                </a>
             </div>
         </div>
 

@@ -31,4 +31,27 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'sso' => [
+        'redirect_uri' => env('SSO_REDIRECT_URI'),
+        'easyfleet' => [
+            'id' => env('SSO_EASYFLEET_ID'),
+            'secret' => env('SSO_EASYFLEET_SECRET'),
+            'authorization' => env('SSO_EASYFLEET_AUTHORIZATION'),
+            'token' => env('SSO_EASYFLEET_TOKEN'),
+            'userinfo' => env('SSO_EASYFLEET_USERINFO'),
+            'jwks' => env('SSO_EASYFLEET_JWKS'),
+            'url' => env('SSO_EASYFLEET_URL'),
+        ],
+
+            'microsoft' => [
+            'id' => env('SSO_MICROSOFT_ID'),
+            'secret' => env('SSO_MICROSOFT_SECRET'),
+            'authorization' => env('SSO_MICROSOFT_AUTHORIZATION'),
+            'token' => env('SSO_MICROSOFT_TOKEN'),
+            'userinfo' => env('SSO_MICROSOFT_USERINFO'),
+            'jwks' => env('SSO_MICROSOFT_JWKS'),
+            'url' => env('SSO_MICROSOFT_URL'),
+        ],
+    ],
+
 ];

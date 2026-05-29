@@ -8,6 +8,7 @@ use App\Http\Controllers\CongeController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\JustificatifAbsenceController;
+use App\Http\Controllers\SsoClientController;
 // use App\Http\Controllers\CronController;
 
 /*
@@ -98,3 +99,16 @@ Route::post('/admin/excel-to-pdf', [AdminController::class, 'excelToPdf'])->name
 
 Route::get('/admin/planning/export/{week}/{year}', [AdminController::class, 'exportPlanning'])->name('planning.export')->middleware('auth', 'is_admin');
 Route::get('/admin/planning/export-pdf/{week}/{year}', [AdminController::class, 'exportPlanningPdf'])->name('planning.export.pdf')->middleware('auth', 'is_admin');
+
+// TEAMS
+Route::view('/teams', 'teams')->name('teams');
+
+Route::get('/sso/login/{provider}', [SsoClientController::class, 'redirectToProvider'])
+    ->name('sso.login');
+
+Route::get('/sso/callback', [SsoClientController::class, 'handleCallback'])
+    ->name('sso.callback');
+
+Route::post('/sso/logout', [SsoClientController::class, 'logout'])
+    ->name('sso.logout')
+    ->middleware('auth');
