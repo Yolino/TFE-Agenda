@@ -39,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $targetUserId || $user->is_admin();
         });
 
+        // Accès aux logs système : Admin OU Directeur (réutilise la source unique).
+        Gate::define('view-logs', fn (User $user) => $user->canAccessLogs());
+
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
             $url = url(route('password.reset', [
                 'token' => $token,

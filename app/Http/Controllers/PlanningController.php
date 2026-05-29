@@ -10,6 +10,7 @@ use App\Http\Requests\PlanningRequest;
 use App\Models\Planning;
 use App\Models\PlanningTemplate;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use App\Services\PlanningLockService;
 use App\Services\CongeCancellationService;
 use Carbon\Carbon;
@@ -18,6 +19,30 @@ class PlanningController extends Controller
 {
     public function __construct(private CongeCancellationService $cancellationService)
     {
+    }
+
+    /**
+     * Trace une modification d'horaires effectuée POUR UN AUTRE utilisateur
+     * (typiquement un admin qui touche au planning de quelqu'un d'autre).
+     *
+     * Point unique de décision : ne loggue RIEN si l'utilisateur modifie son
+     * propre planning. On évite ainsi le bruit et on ne garde que le cas
+     * sensible « quelqu'un modifie les horaires d'autrui ».
+     */
+    private function logForeignScheduleChange(
+        string $action,
+        int $ownerUserId,
+        array $properties = [],
+        ?Planning $subject = null
+    ): void {
+        if ($ownerUserId === (int) auth()->id()) {
+            return;
+        }
+
+        ActivityLogger::record($action, $subject, array_merge([
+            'target_user_id' => $ownerUserId,
+            'by_user_id'     => auth()->id(),
+        ], $properties), "Modification d'horaires d'un autre utilisateur");
     }
 
     public function index(Request $request): View
@@ -97,7 +122,7 @@ class PlanningController extends Controller
         }
 
         $isCustom = $credentials['status'] === 'custom';
-        Planning::create([
+        $planning = Planning::create([
             'user_id' => $credentials['user_id'],
             'date' => $credentials['date'],
             'status_id' => Planning::STATUS_MAP[$credentials['status']] ?? null,
@@ -107,6 +132,15 @@ class PlanningController extends Controller
             'start_time_afternoon' => $isCustom ? null : ($credentials['start_time_afternoon'] ?? null),
             'end_time_afternoon' => $isCustom ? null : ($credentials['end_time_afternoon'] ?? null),
         ]);
+
+        $this->logForeignScheduleChange('planning.created_for_other', (int) $credentials['user_id'], [
+            'date'                 => $credentials['date'],
+            'status'               => $credentials['status'],
+            'start_time'           => $credentials['start_time'] ?? null,
+            'end_time'             => $credentials['end_time'] ?? null,
+            'start_time_afternoon' => $credentials['start_time_afternoon'] ?? null,
+            'end_time_afternoon'   => $credentials['end_time_afternoon'] ?? null,
+        ], $planning);
 
         return response()->json(['message' => 'Succès'], 200);
     }
@@ -138,6 +172,8 @@ class PlanningController extends Controller
             ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
             ->get()
             ->keyBy('date');
+
+        $filledCount = 0;
 
         while ($startDate->lte($endDate)) {
             if (! PlanningLockService::isDateEditable($startDate)) {
@@ -185,8 +221,16 @@ class PlanningController extends Controller
                 ]
             );
 
+            $filledCount++;
             $startDate->addDay();
         }
+
+        $this->logForeignScheduleChange('planning.filled_for_other', $targetUserId, [
+            'annee'         => (int) $year,
+            'mois'          => (int) $month,
+            'semaine'       => (int) $weekNumber,
+            'jours_remplis' => $filledCount,
+        ]);
 
         return response()->json(['message' => 'Semaine remplie avec succès'], 200);
     }
@@ -225,6 +269,17 @@ class PlanningController extends Controller
 
         Gate::authorize('manage-planning', (int) $entry->user_id);
 
+        // Propriétaire réel du planning + instantané AVANT modification (pour l'audit).
+        $ownerId = (int) $entry->user_id;
+        $before  = [
+            'date'                 => $entry->date,
+            'status'               => $entry->status,
+            'start_time_morning'   => $entry->start_time_morning,
+            'end_time_morning'     => $entry->end_time_morning,
+            'start_time_afternoon' => $entry->start_time_afternoon,
+            'end_time_afternoon'   => $entry->end_time_afternoon,
+        ];
+
         if (! PlanningLockService::isDateEditable($entry->date) || ! PlanningLockService::isDateEditable($credentials['date'])) {
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
         }
@@ -248,7 +303,7 @@ class PlanningController extends Controller
                 $this->cancellationService->cancelFromPlanning($entry, auth()->id());
 
                 $isCustomNew = $newStatus === 'custom';
-                Planning::create([
+                $newEntry = Planning::create([
                     'user_id' => $newUserId,
                     'date' => $newDate,
                     'status_id' => Planning::STATUS_MAP[$newStatus] ?? null,
@@ -258,6 +313,12 @@ class PlanningController extends Controller
                     'start_time_afternoon' => $isCustomNew ? null : ($credentials['start_time_afternoon'] ?? null),
                     'end_time_afternoon' => $isCustomNew ? null : ($credentials['end_time_afternoon'] ?? null),
                 ]);
+
+                $this->logForeignScheduleChange('planning.updated_for_other', $ownerId, [
+                    'avant'           => $before,
+                    'apres'           => ['date' => $newDate, 'status' => $newStatus],
+                    'conge_cancelled' => true,
+                ], $newEntry);
 
                 return response()->json([
                     'message' => 'Modification réussie. La demande de congé associée a été annulée.',
@@ -277,6 +338,18 @@ class PlanningController extends Controller
             'start_time_afternoon' => $isCustom ? null : ($credentials['start_time_afternoon'] ?? null),
             'end_time_afternoon' => $isCustom ? null : ($credentials['end_time_afternoon'] ?? null),
         ]);
+
+        $this->logForeignScheduleChange('planning.updated_for_other', $ownerId, [
+            'avant' => $before,
+            'apres' => [
+                'date'                 => $credentials['date'],
+                'status'               => $credentials['status'],
+                'start_time'           => $isCustom ? null : ($credentials['start_time'] ?? null),
+                'end_time'             => $isCustom ? null : ($credentials['end_time'] ?? null),
+                'start_time_afternoon' => $isCustom ? null : ($credentials['start_time_afternoon'] ?? null),
+                'end_time_afternoon'   => $isCustom ? null : ($credentials['end_time_afternoon'] ?? null),
+            ],
+        ], $entry);
 
         return response()->json(['message' => 'Modification réussie'], 200);
     }
@@ -303,7 +376,17 @@ class PlanningController extends Controller
             ], 200);
         }
 
+        // Instantané AVANT suppression (le congé en cascade est déjà tracé plus haut
+        // via conge.cancelled, donc on ne loggue ici que la suppression simple).
+        $ownerId  = (int) $entry->user_id;
+        $snapshot = ['date' => $entry->date, 'status' => $entry->status];
+
         $entry->delete();
+
+        $this->logForeignScheduleChange('planning.deleted_for_other', $ownerId, [
+            'supprime' => $snapshot,
+        ]);
+
         return response()->json(['message' => 'Suppression réussie'], 200);
     }
 }

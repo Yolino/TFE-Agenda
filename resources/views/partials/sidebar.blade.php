@@ -45,5 +45,12 @@
                 <span>Utilisateurs</span>
             </a>
         @endif
+        {{-- Logs système : visible pour les Admins ET les Directeurs --}}
+        @if(Auth::user()->canAccessLogs())
+            <a href="{{ route('admin.logs') }}" class="flex items-center gap-3 py-3 px-5 rounded-box transition duration-200 text-[15px] text-white">
+                <i class="fa-duotone fa-list-timeline text-lg w-6 text-center shrink-0"></i>
+                <span>Logs système</span>
+            </a>
+        @endif
     </nav>
 </div>

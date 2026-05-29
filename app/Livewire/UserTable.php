@@ -8,6 +8,7 @@ use App\Models\Planning;
 use App\Models\PlanningTemplate;
 use App\Models\User;
 use App\Models\UserAgendaProfile;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -147,6 +148,11 @@ class UserTable extends Component
         try {
             $user = User::findOrFail($this->selectedUser['id']);
 
+            // Affectations AVANT modification : les pivots (agence/département) ne
+            // déclenchent aucun événement Eloquent, on capture donc l'ancien état ici.
+            $oldAgenceId      = $user->agences()->first()?->id;
+            $oldDepartementId = $user->departements()->first()?->id;
+
             $user->update([
                 'name'        => $data['name'],
                 'firstname'   => $data['firstname'],
@@ -166,6 +172,10 @@ class UserTable extends Component
 
             $user->agences()->sync([$data['agence_id']]);
             $user->departements()->sync([$data['departement_id']]);
+
+            // Trace les changements d'affectation sur la base BTI (tables pivot).
+            $this->logBtiRelationChange($user, 'agence', $oldAgenceId, $data['agence_id']);
+            $this->logBtiRelationChange($user, 'departement', $oldDepartementId, $data['departement_id']);
 
             $bti->commit();
             $local->commit();
@@ -230,6 +240,10 @@ class UserTable extends Component
             $user->agences()->attach($validated['agence_id']);
             $user->departements()->attach($validated['departement_id']);
 
+            // Trace l'affectation initiale (agence/département) sur la base BTI.
+            $this->logBtiRelationChange($user, 'agence', null, $validated['agence_id']);
+            $this->logBtiRelationChange($user, 'departement', null, $validated['departement_id']);
+
             $this->createDefaultPlanningTemplates($user);
 
             $bti->commit();
@@ -273,6 +287,23 @@ class UserTable extends Component
     private function buildAccesLevel(bool $isEtudiant): string
     {
         return $isEtudiant ? User::ROLE_ETUDIANT : 'U';
+    }
+
+    /**
+     * Journalise un changement d'affectation (agence / département) sur la base BTI.
+     * Ces liens sont portés par des tables pivot : les événements Eloquent ne s'y
+     * déclenchent pas, on les trace donc explicitement (préfixe "bti." => surlignage).
+     */
+    private function logBtiRelationChange(User $user, string $relation, $oldId, $newId): void
+    {
+        if ((int) $oldId === (int) $newId) {
+            return;
+        }
+
+        ActivityLogger::record("bti.user.{$relation}_changed", $user, [
+            'avant' => $oldId !== null ? (int) $oldId : null,
+            'apres' => (int) $newId,
+        ], "Changement de {$relation} d'un utilisateur (base BTI)");
     }
 
     private function createDefaultPlanningTemplates(User $user): void

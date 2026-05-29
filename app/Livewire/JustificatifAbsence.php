@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\JustificatifAbsence as JustificatifAbsenceModel;
 use App\Models\Planning;
+use App\Services\ActivityLogger;
 use App\Services\FileCompressionService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -62,13 +63,20 @@ class JustificatifAbsence extends Component
         $endDate = Carbon::parse($this->end_date);
         $nbJours = $startDate->diffInDays($endDate) + 1;
 
-        JustificatifAbsenceModel::create([
+        $justificatif = JustificatifAbsenceModel::create([
             'user_id' => auth()->id(),
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'nb_jours' => $nbJours,
             'certificat_medical' => $path,
         ]);
+
+        // LOG MÉTIER : dépôt d'un justificatif d'absence.
+        ActivityLogger::record('justificatif.created', $justificatif, [
+            'start_date' => $this->start_date,
+            'end_date'   => $this->end_date,
+            'nb_jours'   => $nbJours,
+        ], 'Ajout d\'un justificatif d\'absence');
 
         $period = CarbonPeriod::create($startDate, $endDate);
 

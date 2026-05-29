@@ -12,7 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Purge quotidienne des logs métiers de plus de 6 mois (rétention glissante).
+        // (Les logs techniques sont purgés automatiquement par le canal "technique" : days => 30.)
+        $schedule->command('logs:purge-metier')
+            ->dailyAt('02:30')
+            ->withoutOverlapping();
     }
 
     /**

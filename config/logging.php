@@ -52,9 +52,12 @@ return [
     */
 
     'channels' => [
+        // Canal par défaut : on le redirige vers le canal "technique" afin que TOUTES
+        // les erreurs framework / exceptions non interceptées héritent automatiquement
+        // de la rétention de 30 jours, sans avoir à modifier la variable LOG_CHANNEL.
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['single'],
+            'channels' => ['technique'],
             'ignore_exceptions' => false,
         ],
 
@@ -70,6 +73,22 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | LOGS TECHNIQUES (erreurs framework & anomalies logicielles)
+        |----------------------------------------------------------------------
+        | Driver "daily" => un fichier par jour (technique-AAAA-MM-JJ.log).
+        | 'days' => 30 : Monolog purge AUTOMATIQUEMENT les fichiers de plus de
+        | 30 jours à chaque écriture. Aucune commande/cron n'est nécessaire ici.
+        */
+        'technique' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/technique/technique.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
             'replace_placeholders' => true,
         ],
 

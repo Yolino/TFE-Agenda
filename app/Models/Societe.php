@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsBtiChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Societe extends Model
 {
+    use LogsBtiChanges;
+
     protected $connection = 'bti';
 
     protected $table = 'societes';

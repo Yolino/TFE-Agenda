@@ -86,6 +86,11 @@ Route::prefix('/admin')->name('admin.')->middleware('auth', 'is_admin')->group(f
     })->name('absences');
 });
 
+// LOGS SYSTÈME — accès Admin OU Directeur (middleware can_view_logs).
+Route::get('/admin/logs', fn () => view('admin.logs'))
+    ->name('admin.logs')
+    ->middleware('auth', 'can_view_logs');
+
 // CRON
 // Route::middleware('httpbasicauth')->group(function () {
 //     Route::get('/tasks/send-planning', [CronController::class, 'sendPlanning'])->name('cron.sendPlanning');
