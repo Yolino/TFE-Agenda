@@ -61,10 +61,10 @@ class JustificatifAbsenceController extends Controller
 
         $path = $justificatif->certificat_medical;
 
-        if (! $path || ! Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('medical')->exists($path)) {
             abort(404);
         }
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('medical')->response($path);
     }
 }

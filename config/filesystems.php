@@ -36,6 +36,17 @@ return [
             'throw' => false,
         ],
 
+        // Disque privé pour les documents sensibles (certificats médicaux).
+        // Stocké hors de storage/app/public : jamais exposé par storage:link,
+        // donc inaccessible par URL directe. L'accès passe uniquement par un
+        // contrôleur qui vérifie les droits (propriétaire ou admin).
+        'medical' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

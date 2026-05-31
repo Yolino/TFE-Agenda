@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -11,54 +12,47 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    protected $model = User::class;
+
     protected static ?string $password;
 
     /**
-     * Define the model's default state.
+     * État par défaut, aligné sur le schéma réel de la table "users" (base bti).
      *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            'name' => fake()->lastName(),
-            'firstname' => fake()->firstName(),
-            'email' => fake()->unique()->safeEmail(),
+            'name'              => fake()->lastName(),
+            'firstname'         => fake()->firstName(),
+            'alias'             => null,
+            'phone'             => fake()->optional()->numerify('04########'),
+            'email'             => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement(['A', 'U']), // A = Admin, U = User
-            'type' => fake()->randomElement(['I', 'S', 'B']),
-            'remember_token' => Str::random(10),
+            'password'          => static::$password ??= Hash::make('password'),
+            'acces_level'       => 'U',
+            'theme'             => 'light',
+            'actif'             => true,
+            'remember_token'    => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+    /** Adresse e-mail non vérifiée. */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(fn () => ['email_verified_at' => null]);
     }
 
-    /**
-     * Indicate that the user is an admin.
-     */
-    public function admin(): static
+    /** Utilisateur de type "étudiant" (niveau d'accès dédié). */
+    public function etudiant(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'role' => 'A',
-        ]);
+        return $this->state(fn () => ['acces_level' => User::ROLE_ETUDIANT]);
     }
 
-    /**
-     * Indicate that the user is a regular user.
-     */
-    public function user(): static
+    /** Compte désactivé. */
+    public function inactif(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'role' => 'U',
-        ]);
+        return $this->state(fn () => ['actif' => false]);
     }
 }

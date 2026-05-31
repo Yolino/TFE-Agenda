@@ -57,7 +57,7 @@ class JustificatifAbsence extends Component
     {
         $this->validate();
 
-        $path = $compressor->storeAndCompress($this->certificat_medical, 'certificats', 'public');
+        $path = $compressor->storeAndCompress($this->certificat_medical, 'certificats', 'medical');
 
         $startDate = Carbon::parse($this->start_date);
         $endDate = Carbon::parse($this->end_date);

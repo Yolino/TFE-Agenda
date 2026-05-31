@@ -3,19 +3,27 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use App\Models\Agence;
 use App\Models\DemandeConge;
 use App\Models\Planning;
 use App\Services\LeaveBalanceService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AdminConges extends Component
 {
     public $selectedConge = null;
     public $filter = 'envoyee';
+    public ?int $filterAgenceId = null;
 
     public function selectConge($id)
     {
         $this->selectedConge = $this->selectedConge === $id ? null : $id;
+    }
+
+    public function filterByAgence($agenceId): void
+    {
+        $this->filterAgenceId = $agenceId !== null ? (int) $agenceId : null;
     }
 
     public function accepter($id, LeaveBalanceService $leaveBalance)
@@ -81,10 +89,17 @@ class AdminConges extends Component
     {
         Carbon::setLocale('fr');
 
-        $query = DemandeConge::with(['user', 'decidedBy', 'cancelledBy'])->orderBy('created_at', 'desc');
+        $query = DemandeConge::with(['user.agences.societe', 'decidedBy', 'cancelledBy'])->orderBy('created_at', 'desc');
 
         if ($this->filter !== 'toutes') {
             $query->where('status', $this->filter);
+        }
+
+        if ($this->filterAgenceId !== null) {
+            $userIds = DB::connection('bti')->table('pivot_a_u')
+                ->where('agence_id', $this->filterAgenceId)
+                ->pluck('user_id');
+            $query->whereIn('user_id', $userIds);
         }
 
         $demandes = $query->get()->map(function ($conge) {
@@ -93,10 +108,22 @@ class AdminConges extends Component
             return $conge;
         });
 
+        $demandesByAgence = $demandes->groupBy(
+            fn ($conge) => $conge->user?->agences->first()?->display_name ?? 'Sans agence'
+        );
+
+        $agences = Agence::with('societe')
+            ->where('actif', true)
+            ->get()
+            ->sortBy(fn ($a) => $a->display_name)
+            ->values();
+
         $nbEnAttente = DemandeConge::where('status', 'envoyee')->count();
 
         return view('livewire.admin-conges', [
             'demandes' => $demandes,
+            'demandesByAgence' => $demandesByAgence,
+            'agences' => $agences,
             'nbEnAttente' => $nbEnAttente,
         ]);
     }

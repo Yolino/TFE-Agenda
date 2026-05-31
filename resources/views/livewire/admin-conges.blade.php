@@ -36,75 +36,105 @@
         <button wire:click="$set('filter', 'toutes')" class="btn btn-sm {{ $filter === 'toutes' ? 'btn-primary' : 'btn-ghost' }}">Toutes</button>
     </div>
 
-    <div class="overflow-x-auto">
-    <table class="table">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Employé</th>
-                <th class="hidden sm:table-cell">Type</th>
-                <th class="hidden md:table-cell">Date</th>
-                <th class="hidden sm:table-cell">Nb j.</th>
-                <th>Statut</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($demandes as $demande)
-            <tr class="hover cursor-pointer" wire:click="selectConge({{ $demande->id }})">
-                <th>
-                    <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser la demande" onclick="event.stopPropagation(); window.open('/mes-conges/pdf/{{ $demande->id }}', '_blank');">
-                        <i class="fa-duotone fa-eye"></i>
-                    </span>
-                </th>
-                <td class="font-bold">{{ $demande->user->firstname }} {{ $demande->user->name }}</td>
-                <td class="hidden sm:table-cell">{{ $types[$demande->type] }}</td>
-                <td class="hidden md:table-cell">du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</td>
-                <td class="hidden sm:table-cell">
-                    {{ $formatJours($demande->nb_jours) }}
-                    @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
-                        <span class="badge badge-xs badge-outline ml-1">½</span>
-                    @endif
-                </td>
-                <td>
-                    <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
-                    <div class="mt-1"><x-conge-decision :conge="$demande" /></div>
-                </td>
-                <td>
-                    @if($demande->status === 'envoyee')
-                        <button wire:click.stop="accepter({{ $demande->id }})" class="btn btn-sm btn-success tooltip" data-tip="Accepter">
-                            <i class="fa-duotone fa-check"></i>
-                        </button>
-                        <button wire:click.stop="refuser({{ $demande->id }})" class="btn btn-sm btn-error ml-1 tooltip" data-tip="Refuser">
-                            <i class="fa-duotone fa-xmark"></i>
-                        </button>
-                    @endif
-                </td>
-            </tr>
-            @if($selectedConge === $demande->id)
-            <tr>
-                <td colspan="7">
-                    <x-conge-details :conge="$demande">
-                        @if($demande->status === 'envoyee')
-                            <x-slot:actions>
-                                <button wire:click="accepter({{ $demande->id }})" class="btn btn-sm btn-success">
-                                    <i class="fa-duotone fa-check mr-1"></i> Accepter
-                                </button>
-                                <button wire:click="refuser({{ $demande->id }})" class="btn btn-sm btn-error">
-                                    <i class="fa-duotone fa-xmark mr-1"></i> Refuser
-                                </button>
-                            </x-slot:actions>
-                        @endif
-                    </x-conge-details>
-                </td>
-            </tr>
-            @endif
-            @empty
-            <tr>
-                <td colspan="7" class="text-center text-gray-500">Aucune demande de congé.</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
-    </div>{{-- /overflow-x-auto --}}
+    {{-- Filtre Agence --}}
+    <div class="mb-4 flex flex-wrap gap-2 items-center">
+        <span class="text-sm font-semibold">Agence :</span>
+        <x-agence-autocomplete
+            :agences="$agences"
+            :selected="$filterAgenceId"
+            placeholder="Toutes les agences"
+            nullable
+            null-label="Toutes les agences"
+            input-class="input input-bordered input-sm w-64"
+            dropdown-class="w-64"
+            @selected="$wire.filterByAgence($event.detail.value)" />
+    </div>
+
+    {{-- Tableau groupé par agence --}}
+    <div class="space-y-6">
+        @forelse($demandesByAgence as $agenceLabel => $items)
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-base">
+                        <i class="fa-duotone fa-building text-accent mr-1"></i>
+                        {{ $agenceLabel }}
+                        <span class="badge badge-ghost badge-sm">{{ $items->count() }}</span>
+                    </h2>
+
+                    <div class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Employé</th>
+                                    <th class="hidden sm:table-cell">Type</th>
+                                    <th class="hidden md:table-cell">Date</th>
+                                    <th class="hidden sm:table-cell">Nb j.</th>
+                                    <th>Statut</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($items as $demande)
+                                <tr class="hover cursor-pointer" wire:click="selectConge({{ $demande->id }})">
+                                    <th>
+                                        <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser la demande" onclick="event.stopPropagation(); window.open('/mes-conges/pdf/{{ $demande->id }}', '_blank');">
+                                            <i class="fa-duotone fa-eye"></i>
+                                        </span>
+                                    </th>
+                                    <td class="font-bold">{{ $demande->user->firstname }} {{ $demande->user->name }}</td>
+                                    <td class="hidden sm:table-cell">{{ $types[$demande->type] }}</td>
+                                    <td class="hidden md:table-cell">du {{ $demande->formattedStartDate }} au {{ $demande->formattedEndDate }}</td>
+                                    <td class="hidden sm:table-cell">
+                                        {{ $formatJours($demande->nb_jours) }}
+                                        @if(fmod((float) $demande->nb_jours, 1) !== 0.0)
+                                            <span class="badge badge-xs badge-outline ml-1">½</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ $statuts[$demande->status]['class'] }}">{{ $statuts[$demande->status]['label'] }}</span>
+                                        <div class="mt-1"><x-conge-decision :conge="$demande" /></div>
+                                    </td>
+                                    <td>
+                                        @if($demande->status === 'envoyee')
+                                            <button wire:click.stop="accepter({{ $demande->id }})" class="btn btn-sm btn-success tooltip" data-tip="Accepter">
+                                                <i class="fa-duotone fa-check"></i>
+                                            </button>
+                                            <button wire:click.stop="refuser({{ $demande->id }})" class="btn btn-sm btn-error ml-1 tooltip" data-tip="Refuser">
+                                                <i class="fa-duotone fa-xmark"></i>
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @if($selectedConge === $demande->id)
+                                <tr>
+                                    <td colspan="7">
+                                        <x-conge-details :conge="$demande">
+                                            @if($demande->status === 'envoyee')
+                                                <x-slot:actions>
+                                                    <button wire:click="accepter({{ $demande->id }})" class="btn btn-sm btn-success">
+                                                        <i class="fa-duotone fa-check mr-1"></i> Accepter
+                                                    </button>
+                                                    <button wire:click="refuser({{ $demande->id }})" class="btn btn-sm btn-error">
+                                                        <i class="fa-duotone fa-xmark mr-1"></i> Refuser
+                                                    </button>
+                                                </x-slot:actions>
+                                            @endif
+                                        </x-conge-details>
+                                    </td>
+                                </tr>
+                                @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="alert alert-info">
+                <i class="fa-duotone fa-circle-info"></i>
+                <span>Aucune demande de congé.</span>
+            </div>
+        @endforelse
+    </div>
 </div>
