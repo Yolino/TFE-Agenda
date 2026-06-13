@@ -7,9 +7,11 @@
     @include('partials.flash')
     <div class="card-eg flex items-center justify-between gap-4 flex-wrap">
         <h1 class="text-2xl md:text-4xl font-medium">Mes congés</h1>
+        {{-- Compteur de jours de congé désactivé temporairement
         <div class="min-w-[18rem]">
             <x-leave-balance :balance="$balance" compact />
         </div>
+        --}}
     </div>
     @php
     $types = [
@@ -35,51 +37,26 @@
     @endphp
     @php
         $ongletInitial = request()->has('year') ? 'historique' : 'demandes';
-        $refuseeIds = $conges->where('status', 'refusee')->pluck('id')->values()->toArray();
     @endphp
     <div class="card-eg flex flex-col lg:flex-row gap-4" x-data="{
         onglet: '{{ $ongletInitial }}',
         selectedConge: null,
-        toggleDetails(id) { this.selectedConge = this.selectedConge === id ? null : id; },
-        archivedIds: JSON.parse(localStorage.getItem('archived_conges') || '[]'),
-        refuseeIds: @json($refuseeIds),
-        totalConges: {{ $conges->count() }},
-        totalHistorique: {{ $historique->count() }},
-        get archivedCount() {
-            return this.refuseeIds.filter(id => this.archivedIds.includes(id)).length;
-        },
-        get demandesCount() {
-            return this.totalConges - this.archivedCount;
-        },
-        get historiqueCount() {
-            return this.totalHistorique + this.archivedCount;
-        },
-        isArchived(id) { return this.archivedIds.includes(id); },
-        archiveConge(id) {
-            this.archivedIds.push(id);
-            localStorage.setItem('archived_conges', JSON.stringify(this.archivedIds));
-            Swal.fire({
-                title: 'Archivée',
-                text: 'La demande a été déplacée dans l\'historique.',
-                icon: 'success',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: true,
-            });
-        }
+        toggleDetails(id) { this.selectedConge = this.selectedConge === id ? null : id; }
     }">
         <div class="lg:basis-3/4 min-w-0">
             <!-- Onglets -->
             <div role="tablist" class="tabs tabs-bordered mb-4">
                 <a role="tab" class="tab" :class="onglet === 'demandes' ? 'tab-active' : ''" @click="onglet = 'demandes'">
                     Mes demandes
-                    <span class="badge badge-sm badge-primary ml-2" x-show="demandesCount > 0" x-text="demandesCount"></span>
+                    @if($conges->total() > 0)
+                        <span class="badge badge-sm badge-primary ml-2">{{ $conges->total() }}</span>
+                    @endif
                 </a>
                 <a role="tab" class="tab" :class="onglet === 'historique' ? 'tab-active' : ''" @click="onglet = 'historique'">
                     Historique
-                    <span class="badge badge-sm badge-primary ml-2" x-show="historiqueCount > 0" x-text="historiqueCount"></span>
+                    @if($historique->total() > 0)
+                        <span class="badge badge-sm badge-primary ml-2">{{ $historique->total() }}</span>
+                    @endif
                 </a>
             </div>
 
@@ -99,7 +76,7 @@
                     </thead>
                     <tbody>
                         @forelse ($conges as $conge)
-                        <tr class="hover cursor-pointer" x-show="!isArchived({{ $conge->id }})" @click="toggleDetails({{ $conge->id }})">
+                        <tr class="hover cursor-pointer" @click="toggleDetails({{ $conge->id }})">
                             <th>
                                 <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser le PDF" @click.stop="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank')">
                                     <i class="fa-duotone fa-eye"></i>
@@ -143,14 +120,9 @@
                                         <i class="fa-duotone fa-ban"></i>
                                     </button>
                                 @endif
-                                @if($conge->status === 'refusee')
-                                    <button @click="archiveConge({{ $conge->id }})" class="btn btn-sm btn-ghost tooltip" data-tip="Déplacer dans l'historique">
-                                        <i class="fa-duotone fa-box-archive"></i>
-                                    </button>
-                                @endif
                             </td>
                         </tr>
-                        <tr x-show="selectedConge === {{ $conge->id }} && !isArchived({{ $conge->id }})" x-cloak>
+                        <tr x-show="selectedConge === {{ $conge->id }}" x-cloak>
                             <td colspan="6">
                                 <x-conge-details :conge="$conge" />
                             </td>
@@ -162,7 +134,11 @@
                         @endforelse
                     </tbody>
                 </table>
-                </div>{{-- /overflow-x-auto --}}
+                </div>
+
+                <div class="mt-4">
+                    {{ $conges->links() }}
+                </div>
             </div>
 
             <!-- Onglet : Historique -->
@@ -197,35 +173,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Congés refusés archivés depuis l'onglet actif --}}
-                        @foreach ($conges as $conge)
-                            @if($conge->status === 'refusee')
-                            <tr class="hover opacity-80 cursor-pointer" x-show="isArchived({{ $conge->id }})" @click="toggleDetails({{ $conge->id }})">
-                                <th>
-                                    <span class="tooltip tooltip-right cursor-pointer" data-tip="Visualiser le PDF" @click.stop="window.open('/mes-conges/pdf/{{$conge->id}}', '_blank')">
-                                        <i class="fa-duotone fa-eye"></i>
-                                    </span>
-                                </th>
-                                <td class="font-bold">{{ $types[$conge->type] }}</td>
-                                <td>du {{ $conge->formattedStartDate }} au {{ $conge->formattedEndDate }}</td>
-                                <td>
-                                {{ $formatJours($conge->nb_jours) }}
-                                @if(fmod((float) $conge->nb_jours, 1) !== 0.0)
-                                    <span class="badge badge-xs badge-outline ml-1">½ journée</span>
-                                @endif
-                            </td>
-                                <td>
-                                    <span class="badge {{ $statuts[$conge->status]['class'] }}">{{ $statuts[$conge->status]['label'] }}</span>
-                                </td>
-                            </tr>
-                            <tr x-show="selectedConge === {{ $conge->id }} && isArchived({{ $conge->id }})" x-cloak>
-                                <td colspan="5">
-                                    <x-conge-details :conge="$conge" />
-                                </td>
-                            </tr>
-                            @endif
-                        @endforeach
-                        {{-- Historique existant --}}
                         @forelse ($historique as $conge)
                         <tr class="hover opacity-80 cursor-pointer" @click="toggleDetails({{ $conge->id }})">
                             <th>
@@ -252,15 +199,17 @@
                             </td>
                         </tr>
                         @empty
-                            @if($conges->where('status', 'refusee')->isEmpty())
-                            <tr>
-                                <td colspan="5" class="text-center text-gray-500">Aucun congé passé.</td>
-                            </tr>
-                            @endif
+                        <tr>
+                            <td colspan="5" class="text-center text-gray-500">Aucun congé dans l'historique.</td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
-                </div>{{-- /overflow-x-auto --}}
+                </div>
+
+                <div class="mt-4">
+                    {{ $historique->links() }}
+                </div>
             </div>
         </div>
         <div class="lg:basis-1/4">
@@ -372,7 +321,6 @@
         startDateInput.addEventListener('change', () => validateDateOrder(startDateInput, endDateInput));
         endDateInput.addEventListener('change', () => validateDateOrder(startDateInput, endDateInput));
 
-        // Gestion du formulaire de modification
         const editStartDate = document.getElementById('edit_start_date');
         const editEndDate = document.getElementById('edit_end_date');
         const editHalfDayWrapper = document.getElementById('edit_half_day_wrapper');
@@ -399,7 +347,6 @@
             if (validateDateOrder(editStartDate, editEndDate)) syncEditHalfDayVisibility();
         });
 
-        // Ouverture du modal de modification
         document.querySelectorAll('.update-conge').forEach(button => {
             button.addEventListener('click', function() {
                 const congeId = this.getAttribute('data-conge-id');

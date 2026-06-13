@@ -1,12 +1,3 @@
-{{--
-    Modale d'édition d'une entrée de planning — partagée entre :
-    - le planning perso (calendar() factory)
-    - la grille admin (adminPlanningGrid() factory)
-
-    Les deux factories spread `dayModalMixin()` pour bénéficier de l'état/méthodes ci-dessous.
-    L'ouverture se fait via `openDayModalFor({ userId, userName, date, entry })`.
---}}
-
 <div x-show="dayModalOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" style="display: none;">
     <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-md relative max-h-[90vh] overflow-y-auto p-5">
         <div class="mt-3 text-center">
@@ -35,7 +26,6 @@
                                 </optgroup>
                             </template>
                         </select>
-                        {{-- Champ texte visible uniquement quand Personnalisé est choisi --}}
                         <template x-if="dayData.status === 'custom'">
                             <input type="text" x-model="dayData.custom"
                                    class="w-full border rounded px-3 py-2 text-sm outline-none mt-2"
@@ -88,15 +78,6 @@
 @once
 @push('scripts')
 <script>
-    /**
-     * Mixin Alpine partagé pour la modale d'édition de planning.
-     * Spread dans calendar() (perso) et adminPlanningGrid() (admin).
-     *
-     * Chaque factory consommatrice doit :
-     *   - définir `afterSubmit()` (rechargement après succès)
-     *   - définir `afterDelete()` (rechargement après suppression)
-     *   - passer des défauts via `dayModalMixin({ defaults, isAdmin })`
-     */
     function dayModalMixin(opts = {}) {
         const defaults = opts.defaults || {
             start: '08:00', end: '12:00',
@@ -104,7 +85,6 @@
         };
 
         return {
-            // --- État de la modale ---
             dayModalOpen: false,
             isEditing: false,
             entryIdToEdit: null,
@@ -127,7 +107,6 @@
             },
             _modalDefaults: defaults,
 
-            // --- Helpers ---
             formatTime(t) { return t ? t.substr(0, 5) : ''; },
 
             resetDayData() {
@@ -139,10 +118,6 @@
                 this.dayData.custom = '';
             },
 
-            /**
-             * Ouvre la modale dans un contexte donné.
-             * @param {Object} ctx - { userId, userName, date (YYYY-MM-DD), entry, label }
-             */
             openDayModalFor(ctx) {
                 this.targetUserId = ctx.userId;
                 this.targetUserName = ctx.userName || null;
@@ -178,7 +153,6 @@
                 return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             },
 
-            // --- Soumission ---
             submitDayForm() {
                 if (!this.isAdmin && this.adminOnlyStatuses.includes(this.dayData.status)) {
                     Swal.fire({ title: 'Action interdite', text: 'Ce statut est réservé aux administrateurs.', icon: 'error', confirmButtonText: 'OK' });

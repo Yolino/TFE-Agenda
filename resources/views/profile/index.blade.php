@@ -8,16 +8,13 @@
 
     @include('partials.flash')
 
-    {{-- En-tête --}}
     <div class="card-eg">
         <h1 class="text-3xl font-bold">Mon profil</h1>
     </div>
 
-    {{-- Carte profil --}}
     <div class="card-eg">
         <div class="flex flex-col sm:flex-row gap-6 items-start">
 
-            {{-- Avatar --}}
             <div class="flex-shrink-0">
                 <div class="w-24 h-24 rounded-full bg-accent relative overflow-hidden shadow-md">
                     <div class="absolute inset-0 flex items-center justify-center bg-black text-white text-sm bg-opacity-60 opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
@@ -28,20 +25,20 @@
                     </div>
                 </div>
                 <div class="text-center mt-2">
-                    <span class="badge {{ auth()->user()->is_admin() ? 'badge-error' : 'badge-info' }} badge-sm">
-                        {{ auth()->user()->is_admin() ? 'Admin' : 'Utilisateur' }}
+                    @php $profileUser = auth()->user(); @endphp
+                    <span class="badge {{ $profileUser->is_directeur() ? 'badge-secondary' : ($profileUser->is_admin() ? 'badge-error' : 'badge-info') }} badge-sm">
+                        {{ $profileUser->is_directeur() ? 'Direction' : ($profileUser->is_admin() ? 'Admin' : 'Utilisateur') }}
                     </span>
                 </div>
             </div>
 
-            {{-- Contenu Livewire (infos + boutons + modale) --}}
             <div class="flex-1">
                 @livewire('edit-profile')
             </div>
         </div>
     </div>
 
-    {{-- Section planning prédéfini --}}
+    @if(auth()->user()->hasPersonalAgenda())
     <div class="card-eg">
         <h2 class="text-xl font-bold mb-1 flex items-center gap-2">
             <i class="fa-solid fa-calendar-week text-primary"></i>
@@ -79,7 +76,6 @@
                 <div x-data="{ showTimes: {{ $showTimes ? 'true' : 'false' }} }"
                      class="rounded-xl border border-base-200 shadow-sm {{ $isWeekend ? 'bg-base-200' : 'bg-base-100' }} p-3 space-y-2">
 
-                    {{-- En-tête jour --}}
                     <div class="text-center">
                         <p class="font-bold text-sm uppercase tracking-widest {{ $isWeekend ? 'text-gray-400' : '' }}">
                             {{ $dayLabels[$day] }}
@@ -87,7 +83,6 @@
                         <p class="text-xs text-gray-400 capitalize">{{ $day }}</p>
                     </div>
 
-                    {{-- Sélecteur de statut (style natif, toujours lisible) --}}
                     <select @change="showTimes = ['bureau', 'tele_travail'].includes($event.target.value)"
                             name="planning[{{ $day }}][status]"
                             class="w-full rounded-lg border border-gray-300 bg-white text-gray-800 text-sm py-1.5 px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
@@ -100,7 +95,6 @@
                         <option value="neant"        @selected($status === 'neant')>---</option>
                     </select>
 
-                    {{-- Horaires (masqués pour récup / congé / etc.) --}}
                     <div x-show="showTimes" class="space-y-2">
                         <div>
                             <p class="text-xs font-semibold text-gray-400 uppercase mb-1">Matin</p>
@@ -130,6 +124,7 @@
             </div>
         </form>
     </div>
+    @endif
 
 </div>
 @endsection

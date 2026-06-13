@@ -21,10 +21,7 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- Connexion par défaut neutralisée en SQLite : aucun serveur MySQL
-             n'est requis pour la suite de tests (ni en local, ni dans le CI).
-             Les connexions "mysql"/"bti" sont, elles, basculées vers SQLite
-             dans Tests\DatabaseTestCase. -->
+
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>

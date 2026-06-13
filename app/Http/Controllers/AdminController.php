@@ -31,22 +31,23 @@ class AdminController extends Controller
         return view('admin.users', compact('users'));
     }
 
-    /**
-     * Résout l'agence active : query string `agence_id` ou première agence du user connecté.
-     */
     private function resolveCurrentAgenceId(Request $request): ?int
     {
         $fallback = $request->user()->agences->first()?->id;
         return (int) $request->input('agence_id', $fallback) ?: null;
     }
 
-    /**
-     * Renvoie les user_id liés à une agence via le pivot bti pivot_a_u.
-     */
     private function userIdsInAgence(int $agenceId): \Illuminate\Support\Collection
     {
+        // Les directeurs (département Direction) ne figurent pas dans le planning général.
+        $directionIds = DB::connection('bti')->table('departement_user')
+            ->join('departements', 'departements.id', '=', 'departement_user.departement_id')
+            ->where('departements.letter', User::DEPARTEMENT_DIRECTION_LETTER)
+            ->pluck('departement_user.user_id');
+
         return DB::connection('bti')->table('pivot_a_u')
             ->where('agence_id', $agenceId)
+            ->whereNotIn('user_id', $directionIds)
             ->pluck('user_id');
     }
 
@@ -77,7 +78,6 @@ class AdminController extends Controller
 
     public function planning(Request $request)
     {
-        // Par défaut on affiche la semaine suivante (l'admin prépare le planning à venir).
         $defaultDate = now()->addWeek();
         $selectedWeek = $request->input('week', $defaultDate->format('W'));
         $selectedYear = $request->input('year', $defaultDate->isoWeekYear);
@@ -144,8 +144,6 @@ class AdminController extends Controller
                     continue;
                 }
 
-                // Solution A : pas d'auto-création depuis template pour les étudiants
-                // (l'admin les assigne manuellement via la modale "+" du département)
                 if ($isStudent) {
                     continue;
                 }
@@ -172,7 +170,6 @@ class AdminController extends Controller
             $planningEntries = $planningEntries->merge($userEntriesByDate->values());
         }
 
-        // Solution A : un étudiant n'apparaît dans la grille que s'il a ≥1 entrée pour la semaine
         $studentIdsWithEntries = $planningEntries->pluck('user_id')->unique();
         $users = $users->filter(function ($u) use ($studentIdsWithEntries) {
             $isStudent = str_contains((string) ($u->acces_level ?? ''), 'ET');
@@ -328,14 +325,11 @@ class AdminController extends Controller
             ? $this->userIdsInAgence($selectedAgenceId)
             : collect();
 
-        // Approche user-centric : on charge TOUS les utilisateurs actifs de l'agence,
-        // même ceux sans entrée pour la semaine, pour que le tableau soit complet.
         $users = User::with(['profile', 'departements', 'agences.societe'])
             ->where('actif', true)
             ->whereIn('id', $userIdsInAgence)
             ->get();
 
-        // Entrées indexées par user_id pour lookup rapide
         $planningEntriesByUser = Planning::whereIn('date', $daysInWeek->map->toDateString())
             ->whereIn('user_id', $userIdsInAgence)
             ->get()
@@ -427,7 +421,6 @@ class AdminController extends Controller
                 $sheet->getStyle('A' . $row)->applyFromArray(['font' => ['bold' => true]]);
                 $sheet->getStyle('A' . $row)->getAlignment()->setTextRotation(90);
 
-                // Texte enrichi : nom + téléphone + fixe (fixe en rouge gras)
                 $richText = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
                 $phoneStr = (string)($user->phone ?? '');
                 $richText->createText($user->name . ' ' . $user->firstname . "\n" . $phoneStr . "\n");
@@ -484,12 +477,10 @@ class AdminController extends Controller
                                         'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D0CECE']],
                                         'font' => ['bold' => true],
                                     ]);
-                                    // tele_travail et custom → vert ; absences classiques → rouge
                                     $colorCode = in_array($entry->status, ['tele_travail', 'custom']) ? '008000' : 'FF0000';
                                     $sheet->getStyle($columnC . $row)->applyFromArray(['font' => ['color' => ['rgb' => $colorCode]]]);
                                 }
 
-                                // custom rejoint les statuts sans horaires dans la cellule
                                 $hideTimes = in_array($entry->status, ['indisponible', 'recup', 'conge', 'maladie', 'custom'], true);
                                 if (!$hideTimes && $entry->start_time && $entry->end_time) {
                                     $startTime = substr($entry->start_time, 0, 2) . 'h' . substr($entry->start_time, 3, 2);
@@ -510,7 +501,6 @@ class AdminController extends Controller
                         $sheet->mergeCells($columnC . $row . ':' . $columnD . $row);
                         $sheet->getStyle($columnC . $row)->getAlignment()->setWrapText(true);
                     } else {
-                        // Cellule vide — on fusionne quand même les 2 colonnes du jour
                         $sheet->mergeCells($columnC . $row . ':' . $columnD . $row);
                     }
                 }

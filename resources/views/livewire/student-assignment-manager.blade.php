@@ -13,7 +13,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {{-- Disponibles --}}
                 <div>
                     <h4 class="font-semibold text-xs uppercase tracking-wide text-base-content/70 mb-2">
                         Disponibles
@@ -40,7 +39,6 @@
                     </div>
                 </div>
 
-                {{-- Assignés cette semaine --}}
                 <div>
                     <h4 class="font-semibold text-xs uppercase tracking-wide text-base-content/70 mb-2">
                         Assignés cette semaine

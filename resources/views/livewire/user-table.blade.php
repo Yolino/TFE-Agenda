@@ -1,6 +1,5 @@
 <div x-data="{ openCreateForm: @entangle('openCreateForm'), openEditForm: @entangle('openEditForm') }">
 
-    {{-- Barre d'actions --}}
     <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
         <button @click="openCreateForm = true" class="btn btn-success">
             <i class="fa-solid fa-user-plus mr-2"></i>Créer un utilisateur
@@ -10,7 +9,6 @@
             class="input input-bordered w-full max-w-xs" />
     </div>
 
-    {{-- Filtres --}}
     <div x-data="{ showStatusDropdown: false, showRoleDropdown: false, showAgenceDropdown: false, statusTitle: 'Statut', roleTitle: 'Rôle', agenceTitle: 'Agence' }"
          class="mb-4 flex flex-wrap gap-2">
 
@@ -30,7 +28,9 @@
                  class="absolute bg-base-100 border border-base-300 rounded-box shadow-lg mt-1 z-10 min-w-36">
                 <button wire:click.prevent="filterByIsAdmin(null)" @click="roleTitle = 'Tous'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Tous</button>
                 <button wire:click.prevent="filterByIsAdmin('admin')" @click="roleTitle = 'Admins'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Admins</button>
+                <button wire:click.prevent="filterByIsAdmin('direction')" @click="roleTitle = 'Direction'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Direction</button>
                 <button wire:click.prevent="filterByIsAdmin('user')" @click="roleTitle = 'Utilisateurs'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Utilisateurs</button>
+                <button wire:click.prevent="filterByIsAdmin('etudiant')" @click="roleTitle = 'Étudiants'; showRoleDropdown = false" class="block w-full text-left px-4 py-2 hover:bg-base-200 text-sm">Étudiants</button>
             </div>
         </div>
 
@@ -50,7 +50,6 @@
         </div>
     </div>
 
-    {{-- Tableau --}}
     <div class="overflow-x-auto rounded-box border border-base-200 shadow-sm">
         <table class="table table-zebra w-full">
             <thead class="bg-base-200">
@@ -81,9 +80,18 @@
                     </td>
                     <td class="hidden sm:table-cell">{{ $user->email }}</td>
                     <td>
-                        <span class="badge {{ $user->is_admin() ? 'badge-error' : 'badge-info' }} badge-sm">
-                            {{ $user->is_admin() ? 'Admin' : 'Util.' }}
-                        </span>
+                        @php
+                            if ($user->is_directeur()) {
+                                $roleClass = 'badge-secondary'; $roleLabel = 'Direction';
+                            } elseif ($user->is_admin()) {
+                                $roleClass = 'badge-error';     $roleLabel = 'Admin';
+                            } elseif ($user->is_etudiant()) {
+                                $roleClass = 'badge-accent';    $roleLabel = 'Étudiant';
+                            } else {
+                                $roleClass = 'badge-info';      $roleLabel = 'Util.';
+                            }
+                        @endphp
+                        <span class="badge {{ $roleClass }} badge-sm">{{ $roleLabel }}</span>
                     </td>
                     <td class="hidden md:table-cell">
                         {{ $user->departements->first()?->nom ?? '—' }}
@@ -130,7 +138,6 @@
         {{ $users->links() }}
     </div>
 
-    {{-- ========================= MODAL CRÉATION ========================= --}}
     <div x-show="openCreateForm" x-cloak x-transition
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative">
@@ -248,7 +255,6 @@
         </div>
     </div>
 
-    {{-- ========================= MODAL ÉDITION ========================= --}}
     <div x-show="openEditForm" x-cloak x-transition
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div class="bg-base-100 rounded-2xl shadow-2xl w-full max-w-lg relative">
@@ -357,7 +363,6 @@
         </div>
     </div>
 
-    {{-- SweetAlert listener --}}
     <script>
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('swal', ({ title, text, icon }) => {

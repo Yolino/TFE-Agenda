@@ -45,8 +45,9 @@ class JustificatifAbsenceController extends Controller
 
         $historique = $historiqueQuery
             ->orderBy('start_date', 'desc')
-            ->get()
-            ->map($format);
+            ->paginate(10)
+            ->through($format)
+            ->appends(['year' => $selectedYear]);
 
         return view('conges.justificatif', compact('justificatifs', 'historique', 'anneesDisponibles', 'selectedYear'));
     }
@@ -55,7 +56,7 @@ class JustificatifAbsenceController extends Controller
     {
         $user = auth()->user();
 
-        if (! $user || ((int) $justificatif->user_id !== (int) $user->id && ! $user->is_admin())) {
+        if (! $user || ((int) $justificatif->user_id !== (int) $user->id && ! $user->is_directeur())) {
             abort(403);
         }
 

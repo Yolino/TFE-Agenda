@@ -26,7 +26,4 @@
         Si vous n'attendiez pas ce mail, vous pouvez l'ignorer en toute sécurité.
     </p>
 
-    <p style="margin:0; line-height:1.6;">Bienvenue dans l'équipe,</p>
-    <p style="margin:4px 0 0; font-weight:bold; color:#059669;">L'équipe {{ config('app.name') }}</p>
-
 </x-emails.layout>

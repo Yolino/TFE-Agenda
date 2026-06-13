@@ -12,21 +12,13 @@ class LeaveBalanceService
 {
     public const BASE_ANNUAL_VA = 20;
 
-    /**
-     * Renvoie les jours ouvrés effectifs pour un utilisateur entre deux dates.
-     * Règles :
-     *  - Dimanche : toujours exclu.
-     *  - Samedi : exclu sauf si le planning_template de l'utilisateur indique
-     *    bureau / tele_travail pour ce jour (day_of_week = 6).
-     *  - Autres jours : inclus par défaut.
-     */
     public function workingDatesBetween(User $user, Carbon $start, Carbon $end): array
     {
         $worksSaturday = $this->worksOnSaturday($user);
 
         $dates = [];
         foreach (CarbonPeriod::create($start->copy()->startOfDay(), $end->copy()->startOfDay()) as $date) {
-            $dow = $date->dayOfWeekIso; // 1 = lundi ... 7 = dimanche
+            $dow = $date->dayOfWeekIso;
 
             if ($dow === 7) {
                 continue;
@@ -42,10 +34,6 @@ class LeaveBalanceService
         return $dates;
     }
 
-    /**
-     * Calcule le nombre de jours à décompter pour une demande.
-     * Une demi-journée compte 0.5 (et n'a de sens que sur 1 jour ouvré).
-     */
     public function countWorkingDays(User $user, Carbon $start, Carbon $end, bool $halfDay = false): float
     {
         $dates = $this->workingDatesBetween($user, $start, $end);
@@ -62,10 +50,6 @@ class LeaveBalanceService
         return (float) $count;
     }
 
-    /**
-     * Total de jours de Vacances Annuelles déjà consommés (status acceptee)
-     * sur une année donnée, en se basant sur la date de début.
-     */
     public function getUsedVaDays(User $user, int $year): float
     {
         return (float) DemandeConge::where('user_id', $user->id)
@@ -75,9 +59,6 @@ class LeaveBalanceService
             ->sum('nb_jours');
     }
 
-    /**
-     * Total de jours réservés (status envoyee) — utile pour afficher un solde projeté.
-     */
     public function getPendingVaDays(User $user, int $year): float
     {
         return (float) DemandeConge::where('user_id', $user->id)
@@ -87,9 +68,6 @@ class LeaveBalanceService
             ->sum('nb_jours');
     }
 
-    /**
-     * Solde restant de VA pour l'année (base 20 jours).
-     */
     public function getRemainingBalance(User $user, int $year, float $base = self::BASE_ANNUAL_VA): float
     {
         return $base - $this->getUsedVaDays($user, $year);

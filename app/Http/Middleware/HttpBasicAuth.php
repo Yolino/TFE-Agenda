@@ -15,8 +15,8 @@ class HttpBasicAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $envUser = env('CRON_USER');
-        $envPassword = env('CRON_PASSWORD');
+        $envUser = config('crons.user');
+        $envPassword = config('crons.password');
 
         if ($request->getUser() != $envUser || $request->getPassword() != $envPassword) {
             return response('Unauthorized', Response::HTTP_UNAUTHORIZED)->header('WWW-Authenticate', 'Basic');

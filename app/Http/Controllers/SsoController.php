@@ -15,10 +15,6 @@ use Firebase\JWT\JWT;
 
 class SsoController extends Controller
 {
-    /**
-     * Authorization endpoint - OIDC compliant
-     * Handles authorization requests and redirects with authorization code
-     */
     public function handleAuthorization(Request $request)
     {
         $request->validate([
@@ -59,10 +55,6 @@ class SsoController extends Controller
         return $this->generateAuthorizationCode($clientId, $redirectUri, $state, $scope, $nonce);
     }
 
-    /**
-     * Continue authorization after login
-     * This should be called after successful login when SSO request is pending
-     */
     public function continueAuthorization(Request $request)
     {
         if(!Auth::check()) {
@@ -86,9 +78,6 @@ class SsoController extends Controller
         );
     }
 
-    /**
-     * Generate authorization code and redirect
-     */
     private function generateAuthorizationCode($clientId, $redirectUri, $state, $scope, $nonce = null)
     {
         $authCode = Str::random(40);
@@ -114,10 +103,6 @@ class SsoController extends Controller
         return redirect()->to($redirectUri . '?' . http_build_query($params));
     }
 
-    /**
-     * Token endpoint - OIDC compliant
-     * Exchanges authorization code for access token
-     */
     public function token(Request $request)
     {
         $grantType = $request->input('grant_type');
@@ -135,9 +120,6 @@ class SsoController extends Controller
         return response()->json(['error' => 'unsupported_grant_type'], 400);
     }
 
-    /**
-     * Handle authorization code grant
-     */
     private function handleAuthorizationCodeGrant(Request $request)
     {
         $request->validate([
@@ -189,9 +171,6 @@ class SsoController extends Controller
         ]);
     }
 
-    /**
-     * Handle password grant
-     */
     private function handlePasswordGrant(Request $request)
     {
         $request->validate([
@@ -225,9 +204,6 @@ class SsoController extends Controller
         ]);
     }
 
-    /**
-     * Handle client credentials grant
-     */
     private function handleClientCredentialsGrant(Request $request)
     {
         $request->validate([
@@ -250,19 +226,12 @@ class SsoController extends Controller
         ]);
     }
 
-    /**
-     * Handle refresh token grant
-     */
     private function handleRefreshTokenGrant(Request $request)
     {
         $tokenRequest = Request::create('/oauth/token', 'POST', $request->all());
         return app()->handle($tokenRequest);
     }
 
-    /**
-     * User Info endpoint - OIDC compliant
-     * Returns user information based on access token
-     */
     public function userInfo(Request $request)
     {
         $user = $request->user('api');
@@ -293,10 +262,6 @@ class SsoController extends Controller
         return response()->json($userInfo);
     }
 
-    /**
-     * JWK Set endpoint - OIDC compliant
-     * Returns public keys for token verification
-     */
     public function jwkSet()
     {
         $publicKeyPath = storage_path('oauth-public.key');
@@ -331,10 +296,6 @@ class SsoController extends Controller
         ]);
     }
 
-    /**
-     * OIDC Discovery endpoint
-     * Provides metadata about the OIDC provider
-     */
     public function discovery()
     {
         $baseUrl = url('/');
@@ -393,9 +354,6 @@ class SsoController extends Controller
         return JWT::encode($payload, $privateKey, 'RS256');
     }
 
-    /**
-     * Validate redirect URI against client configuration
-     */
     private function isValidRedirectUri(Client $client, string $redirectUri): bool
     {
         if (empty($redirectUri)) {

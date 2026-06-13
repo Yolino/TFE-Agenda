@@ -14,6 +14,14 @@ class DemandeConge extends Model
 
     protected $table = 'demande_conge';
 
+    public const TYPE_LABELS = [
+        'recup'  => 'Récupération',
+        'conge'  => 'Congé',
+        'css'    => 'Congé sans solde',
+        'visite' => 'Visite médicale',
+        'autre'  => 'Autre',
+    ];
+
     protected $fillable = ['user_id', 'date', 'type', 'nb_jours', 'start_date', 'end_date', 'status', 'decided_by', 'decided_at', 'cancelled_at', 'cancelled_by'];
 
     protected $casts = [
@@ -22,11 +30,6 @@ class DemandeConge extends Model
         'nb_jours' => 'float',
     ];
 
-    /**
-     * Relation vers l'utilisateur associé.
-     *
-     * @return BelongsTo
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -40,5 +43,18 @@ class DemandeConge extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function getTypeLabelAttribute(): string
+    {
+        return self::TYPE_LABELS[$this->type] ?? (string) $this->type;
+    }
+
+    public function getFormattedJoursAttribute(): string
+    {
+        $n = (float) $this->nb_jours;
+        $clean = rtrim(rtrim(number_format($n, 1, ',', ' '), '0'), ',');
+
+        return $clean . ' ' . ($n > 1 ? 'jours' : 'jour');
     }
 }

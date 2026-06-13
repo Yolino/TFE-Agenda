@@ -1,14 +1,10 @@
 name: Tests
 
-# Lance la suite PHPUnit à chaque push sur "main" et à chaque Pull Request.
-# Couplé à la protection de branche GitHub (voir README/section CI), ce workflow
-# garantit qu'aucun code ne peut être fusionné tant que les tests ne sont pas au vert.
 on:
   push:
     branches: [ main ]
   pull_request:
 
-# Annule une exécution précédente encore en cours sur la même branche/PR.
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -34,8 +30,6 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          # pdo_sqlite + sqlite3 : la suite tourne entièrement sur SQLite en
-          # mémoire, donc aucun service MySQL n'est nécessaire dans le CI.
           extensions: mbstring, dom, xml, bcmath, curl, pdo, pdo_sqlite, sqlite3, gd, zip, fileinfo
           coverage: none
           tools: composer:v2

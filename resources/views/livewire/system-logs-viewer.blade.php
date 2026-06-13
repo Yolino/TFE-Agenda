@@ -1,5 +1,4 @@
 <div>
-    {{-- ============================ ONGLETS ============================ --}}
     <div role="tablist" class="tabs tabs-boxed mb-4 w-fit">
         <button role="tab" wire:click="$set('tab', 'metier')"
                 class="tab {{ $tab === 'metier' ? 'tab-active' : '' }}">
@@ -11,11 +10,7 @@
         </button>
     </div>
 
-    {{-- ===================================================================== --}}
-    {{--  ONGLET 1 : LOGS MÉTIERS (base de données, filtrables)                --}}
-    {{-- ===================================================================== --}}
     @if($tab === 'metier')
-        {{-- Barre de filtres --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div class="form-control">
                 <label class="label py-1"><span class="label-text text-xs">Recherche</span></label>
@@ -39,7 +34,7 @@
                 <select wire:model.live="filterAction" class="select select-bordered select-sm w-full">
                     <option value="">Toutes</option>
                     @foreach($actions as $action)
-                        <option value="{{ $action }}">{{ $action }}</option>
+                        <option value="{{ $action }}">{{ \App\Models\ActivityLog::labelFor($action) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -58,7 +53,6 @@
         <div class="flex items-center justify-between mb-3">
             <div class="flex flex-wrap items-center gap-3">
                 <span class="text-sm text-base-content/60">{{ $logs->total() }} entrée(s)</span>
-                {{-- Légende de la mise en évidence des écritures sur la base globale BTI --}}
                 <span class="text-xs flex items-center gap-1 text-base-content/50">
                     <span class="badge badge-warning badge-xs">BTI</span> = écriture sur la base globale
                 </span>
@@ -68,8 +62,7 @@
             </button>
         </div>
 
-        {{-- Tableau --}}
-        <div class="overflow-x-auto rounded-box border border-base-200 shadow-sm">
+        <div class="overflow-x-auto rounded-box border border-base-200 shadow-sm" x-data="{ openId: null }">
             <table class="table table-zebra table-sm w-full">
                 <thead class="bg-base-200">
                     <tr>
@@ -83,8 +76,7 @@
                 </thead>
                 <tbody>
                     @forelse($logs as $log)
-                        {{-- Les écritures sur la base BTI sont mises en évidence (bordure + fond) --}}
-                        <tr x-data="{ open: false }" class="{{ $log->is_bti ? 'border-l-4 border-warning bg-warning/5' : '' }}">
+                        <tr class="{{ $log->is_bti ? 'border-l-4 border-warning bg-warning/5' : '' }}">
                             <td class="whitespace-nowrap text-xs">
                                 {{ $log->created_at->format('d/m/Y H:i:s') }}
                             </td>
@@ -92,8 +84,9 @@
                                 {{ $log->user_name ?? '—' }}
                             </td>
                             <td>
-                                <span class="badge {{ $log->badge_class }} badge-sm whitespace-nowrap">
-                                    {{ $log->action }}
+                                <span class="badge {{ $log->badge_class }} badge-sm whitespace-nowrap"
+                                      title="{{ $log->action }}">
+                                    {{ $log->action_label }}
                                 </span>
                                 @if($log->is_bti)
                                     <span class="badge badge-warning badge-xs ml-1" title="Écriture sur la base globale BTI">BTI</span>
@@ -107,8 +100,9 @@
                             </td>
                             <td class="text-center">
                                 @if(!empty($log->properties))
-                                    <button @click="open = !open" class="btn btn-ghost btn-xs">
-                                        <i class="fa-solid" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    <button @click="openId = openId === {{ $log->id }} ? null : {{ $log->id }}"
+                                            class="btn btn-ghost btn-xs">
+                                        <i class="fa-solid" :class="openId === {{ $log->id }} ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                     </button>
                                 @else
                                     <span class="text-base-content/30">—</span>
@@ -116,9 +110,27 @@
                             </td>
                         </tr>
                         @if(!empty($log->properties))
-                            <tr x-show="open" x-cloak>
+                            <tr x-show="openId === {{ $log->id }}" x-cloak>
                                 <td colspan="6" class="bg-base-200/50">
-                                    <pre class="text-xs whitespace-pre-wrap break-all p-2">{{ json_encode($log->properties, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                    <dl class="text-xs p-2 space-y-1">
+                                        @foreach($log->properties as $key => $value)
+                                            <div class="flex flex-wrap gap-x-2">
+                                                <dt class="font-semibold text-base-content/70 whitespace-nowrap">{{ $key }} :</dt>
+                                                <dd class="break-all">
+                                                    @if(is_array($value))
+                                                        <pre class="whitespace-pre-wrap break-all">{{ json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                                    @elseif(is_bool($value))
+                                                        {{ $value ? 'oui' : 'non' }}
+                                                    @else
+                                                        {{ $value === null ? '—' : $value }}
+                                                        @if(in_array($key, $userIdKeys, true) && is_numeric($value) && isset($userNames[(int) $value]) && $userNames[(int) $value] !== '')
+                                                            <span class="text-base-content/60">({{ $userNames[(int) $value] }})</span>
+                                                        @endif
+                                                    @endif
+                                                </dd>
+                                            </div>
+                                        @endforeach
+                                    </dl>
                                 </td>
                             </tr>
                         @endif
@@ -138,9 +150,6 @@
             {{ $logs->links() }}
         </div>
 
-    {{-- ===================================================================== --}}
-    {{--  ONGLET 2 : LOGS TECHNIQUES (fichier journalier, 30 jours)            --}}
-    {{-- ===================================================================== --}}
     @else
         <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
             <div class="form-control w-full max-w-xs">

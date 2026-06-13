@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\AdminConges;
+use App\Models\ActivityLog;
 use App\Models\DemandeConge;
 use App\Models\Planning;
 use App\Models\User;
@@ -11,12 +12,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Tests\DatabaseTestCase;
 
-/**
- * Validation / refus d'une demande de congé par l'administration : c'est le
- * cœur du workflow d'approbation. On vérifie les TRANSITIONS D'ÉTAT et les
- * garde-fous (impossible de re-décider une demande déjà tranchée). Le calcul
- * du solde n'est volontairement pas couvert ici.
- */
 class AdminCongesApprovalTest extends DatabaseTestCase
 {
     public function test_accepter_valide_la_demande_et_alimente_le_planning(): void
@@ -39,12 +34,18 @@ class AdminCongesApprovalTest extends DatabaseTestCase
         $this->assertSame($user->id, (int) $conge->decided_by);
         $this->assertNotNull($conge->decided_at);
 
-        // Le planning a bien été marqué "congé" et rattaché à la demande.
         $this->assertTrue(
             Planning::where('demande_conge_id', $conge->id)
                 ->where('status_id', Planning::STATUS_MAP['conge'])
                 ->exists()
         );
+
+        $this->assertDatabaseHas('logs', [
+            'action'       => 'conge.accepted',
+            'subject_type' => DemandeConge::class,
+            'subject_id'   => $conge->id,
+            'user_id'      => $user->id,
+        ], 'mysql');
     }
 
     public function test_refuser_rejette_la_demande_sans_toucher_au_planning(): void
@@ -62,6 +63,13 @@ class AdminCongesApprovalTest extends DatabaseTestCase
         $this->assertNotNull($conge->decided_at);
 
         $this->assertSame(0, Planning::where('demande_conge_id', $conge->id)->count());
+
+        $this->assertDatabaseHas('logs', [
+            'action'       => 'conge.refused',
+            'subject_type' => DemandeConge::class,
+            'subject_id'   => $conge->id,
+            'user_id'      => $user->id,
+        ], 'mysql');
     }
 
     public function test_une_demande_deja_tranchee_ne_peut_pas_etre_acceptee(): void
@@ -71,8 +79,6 @@ class AdminCongesApprovalTest extends DatabaseTestCase
 
         Auth::login($user);
 
-        // La requête ne cible que les demandes "envoyee" : une demande déjà
-        // acceptée est introuvable -> garde-fou contre une double décision.
         $this->expectException(ModelNotFoundException::class);
 
         (new AdminConges())->accepter($conge->id, app(LeaveBalanceService::class));

@@ -26,7 +26,6 @@ class AuthServiceProvider extends ServiceProvider
         Passport::refreshTokensExpireIn(now()->addDays(30));
         Passport::personalAccessTokensExpireIn(now()->addMonths(6));
 
-        // Define OAuth scopes
         Passport::tokensCan([
             'openid' => 'OpenID Connect',
             'profile' => 'Access user profile',

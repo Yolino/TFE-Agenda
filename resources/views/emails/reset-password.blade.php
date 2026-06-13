@@ -25,7 +25,4 @@
         Si vous n'avez pas demandé de réinitialisation, aucune action n'est requise.
     </p>
 
-    <p style="margin:0; line-height:1.6;">Bien cordialement,</p>
-    <p style="margin:4px 0 0; font-weight:bold; color:#059669;">L'équipe {{ config('app.name') }}</p>
-
 </x-emails.layout>

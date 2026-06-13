@@ -71,7 +71,6 @@ class JustificatifAbsence extends Component
             'certificat_medical' => $path,
         ]);
 
-        // LOG MÉTIER : dépôt d'un justificatif d'absence.
         ActivityLogger::record('justificatif.created', $justificatif, [
             'start_date' => $this->start_date,
             'end_date'   => $this->end_date,

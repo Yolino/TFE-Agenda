@@ -19,8 +19,6 @@ class DemandeCongeFactory extends Factory
     public function definition(): array
     {
         return [
-            // Surchargé par `['user_id' => <int>]` dans les tests qui n'ont pas
-            // besoin d'un vrai utilisateur en base.
             'user_id'    => User::factory(),
             'type'       => 'conge',
             'nb_jours'   => 3,
@@ -30,13 +28,11 @@ class DemandeCongeFactory extends Factory
         ];
     }
 
-    /** Demande soumise, en attente de décision. */
     public function envoyee(): static
     {
         return $this->state(fn () => ['status' => 'envoyee']);
     }
 
-    /** Demande déjà acceptée. */
     public function acceptee(): static
     {
         return $this->state(fn () => [
@@ -46,7 +42,6 @@ class DemandeCongeFactory extends Factory
         ]);
     }
 
-    /** Demande refusée. */
     public function refusee(): static
     {
         return $this->state(fn () => [
@@ -56,7 +51,6 @@ class DemandeCongeFactory extends Factory
         ]);
     }
 
-    /** Demande annulée. */
     public function annulee(): static
     {
         return $this->state(fn () => [

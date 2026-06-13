@@ -12,11 +12,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Purge quotidienne des logs métiers de plus de 6 mois (rétention glissante).
-        // (Les logs techniques sont purgés automatiquement par le canal "technique" : days => 30.)
         $schedule->command('logs:purge-metier')
             ->dailyAt('02:30')
             ->withoutOverlapping();
+
+        if (config('crons.emails_enabled')) {
+            $schedule->command('planning:send-weekly')
+                ->weeklyOn(6, '12:00')
+                ->withoutOverlapping();
+
+            $schedule->command('conges:notify-pending')
+                ->cron('30 8 */5 * *')
+                ->withoutOverlapping();
+        }
     }
 
     /**

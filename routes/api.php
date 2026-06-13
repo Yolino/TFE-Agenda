@@ -18,7 +18,6 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-// OIDC/OAuth2 Routes
 Route::get('/oidc/authorize', [SsoController::class, 'handleAuthorization'])->middleware('web')->name('oidc.authorize');
 Route::get('/oidc/continue', [SsoController::class, 'continueAuthorization'])->middleware('web', 'auth:web')->name('oidc.continue');
 Route::post('/oidc/token', [SsoController::class, 'token'])->name('oidc.token');

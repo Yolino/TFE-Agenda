@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Notifications\NewAccountSetPassword;
 use App\Traits\LogsBtiChanges;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,11 +20,6 @@ class User extends Authenticatable
 
     public const ROLE_ETUDIANT = 'ET';
 
-    /**
-     * Lettre du département (base BTI) qui définit le rôle "Directeur".
-     * En base : letter = 'D', nom = 'Direction'. On cible la lettre car c'est
-     * le critère stable déjà utilisé partout dans l'app (tri, planning, types).
-     */
     public const DEPARTEMENT_DIRECTION_LETTER = 'D';
 
 protected $connection = 'bti';
@@ -94,29 +90,52 @@ protected $connection = 'bti';
         return $this->hasMany(Planning::class);
     }
 
+    public function scopeDirection(Builder $query): Builder
+    {
+        return $query->where('actif', true)
+            ->whereHas('departements', function (Builder $q) {
+                $q->where('letter', self::DEPARTEMENT_DIRECTION_LETTER);
+            });
+    }
+
     public function is_admin(): bool
     {
         return (bool) ($this->profile?->is_admin);
     }
 
-    /**
-     * Un "Directeur" n'est PAS un drapeau dédié : c'est un utilisateur rattaché
-     * au département "Direction" (lettre 'D') dans la base BTI. Le rôle est donc
-     * déduit directement de l'appartenance départementale (source de vérité = BTI).
-     */
     public function is_directeur(): bool
     {
         return $this->departements->contains('letter', self::DEPARTEMENT_DIRECTION_LETTER);
     }
 
-    /**
-     * Source UNIQUE de vérité pour l'accès aux logs système.
-     * Réutilisée par le middleware, le Gate "view-logs", la sidebar
-     * et le composant Livewire SystemLogsViewer (principe DRY).
-     */
     public function canAccessLogs(): bool
     {
         return $this->is_admin() || $this->is_directeur();
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->is_admin() || $this->is_directeur();
+    }
+
+    public function canManageConges(): bool
+    {
+        return $this->is_directeur();
+    }
+
+    public function canEditGlobalPlanning(): bool
+    {
+        return $this->is_admin() || $this->is_directeur();
+    }
+
+    public function hasPersonalAgenda(): bool
+    {
+        return ! $this->is_directeur();
+    }
+
+    public function homeRoute(): string
+    {
+        return $this->is_directeur() ? 'planning' : 'mon-planning.index';
     }
 
     public function is_etudiant(): bool

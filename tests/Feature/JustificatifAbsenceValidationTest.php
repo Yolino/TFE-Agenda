@@ -8,18 +8,8 @@ use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * Le dépôt d'un justificatif d'absence est soumis à des règles strictes
- * (dates cohérentes, certificat obligatoire, formats et tailles maîtrisés).
- * Ces règles protègent à la fois les données et le stockage : on les teste au
- * niveau du composant Livewire, sans base de données (la validation échoue
- * avant toute écriture).
- */
 class JustificatifAbsenceValidationTest extends TestCase
 {
-    /**
-     * @return array<string, array{0: ?string, 1: ?string, 2: string, 3: string}>
-     */
     public static function reglesDeDatesProvider(): array
     {
         return [
@@ -75,7 +65,6 @@ class JustificatifAbsenceValidationTest extends TestCase
 
     public function test_un_certificat_pdf_de_plus_de_2_mo_est_refuse(): void
     {
-        // La règle métier dédiée plafonne spécifiquement les PDF à 2 Mo.
         Livewire::test(JustificatifAbsence::class)
             ->set('start_date', '2024-01-10')
             ->set('end_date', '2024-01-12')

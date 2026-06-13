@@ -18,7 +18,6 @@
             overflow: hidden;
         }
 
-        /* thead se répète sur chaque page — la ligne titre porte la marge haute */
         .thead-title {
             border: none;
             background: #ffffff;
@@ -37,7 +36,6 @@
         .col-name { width: 110px; text-align: left; }
         .col-soc  { width: 56px; }
 
-        /* Ligne séparateur de département — ne peut pas être le dernier élément d'une page */
         .dept-row {
             page-break-after: avoid;
             break-after: avoid;
@@ -50,7 +48,6 @@
             height: 16px;
         }
 
-        /* Couleurs département */
         .dept-D, .bg-D { background-color: #e9e4f8; color: #4a1870; }
         .dept-S, .bg-S { background-color: #fce5cd; color: #783f04; }
         .dept-B, .bg-B { background-color: #d9ead3; color: #274e13; }
@@ -63,25 +60,19 @@
         .dept-F, .bg-F { background-color: #fad8e6; color: #7a1b3a; }
         .dept-V, .bg-V { background-color: #d5e8f9; color: #1a3060; }
 
-        /* Cellules jours — calquées sur l'Excel */
         .holiday-header { background-color: #99F6E4; color: #134E4A; }
         .holiday-cell   { background-color: #99F6E4; color: #134E4A; font-weight: bold; }
 
-        /* Absent = fond gris comme dans l'Excel (#D0CECE) */
         .absent-cell    { background-color: #D0CECE; }
 
-        /* Texte statut */
         .status-bureau   { font-weight: normal; font-size: 11px; }
-        /* DOMICILE : vert #008000 gras, comme l'Excel */
         .status-domicile { color: #008000; font-weight: bold; font-size: 11px; }
-        /* Absences : rouge #FF0000 gras, comme l'Excel */
         .status-absent   { color: #FF0000; font-weight: bold; font-size: 11px; }
 
         .times       { font-size: 10px; }
         .conge-label { font-size: 10px; font-style: italic; }
         .soc-text    { font-size: 8px; text-align: center; }
         .phone-text  { font-size: 10px; }
-        /* Fixe : rouge #FF0000 gras, comme l'Excel */
         .fixe-text   { font-size: 10px; color: #FF0000; font-weight: bold; }
         .empty-cell  { color: #bbb; font-size: 11px; }
 
@@ -153,9 +144,7 @@
                             @elseif($entry)
                                 @php
                                     $status      = $entry->status;
-                                    // Fond gris : tout sauf bureau
                                     $isAbsent    = $status !== 'bureau';
-                                    // Pas d'horaires pour custom (ni pour les absences classiques)
                                     $hideTimes   = in_array($status, ['indisponible', 'recup', 'conge', 'maladie', 'custom'], true);
                                     $statusLabel = match($status) {
                                         'tele_travail' => 'DOMICILE',
@@ -163,12 +152,10 @@
                                         default        => strtoupper($status),
                                     };
                                     $textClass = match($status) {
-                                        // Domicile & custom : écriture verte
                                         'tele_travail', 'custom' => 'status-domicile',
                                         'bureau'                  => 'status-bureau',
                                         default                   => 'status-absent',
                                     };
-                                    // Format heure identique à l'Excel : 09h30
                                     $fmtTime = fn(?string $t): string => $t
                                         ? substr($t, 0, 2) . 'h' . substr($t, 3, 2)
                                         : '';

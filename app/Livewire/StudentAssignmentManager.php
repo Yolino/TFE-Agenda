@@ -38,7 +38,6 @@ class StudentAssignmentManager extends Component
         $this->open = false;
     }
 
-    /** Renvoie les 6 dates lundi→samedi de la semaine courante. */
     private function weekDates(): array
     {
         return collect(range(1, 6))->map(
@@ -46,7 +45,6 @@ class StudentAssignmentManager extends Component
         )->all();
     }
 
-    /** Builder des étudiants du département dans l'agence courante. */
     private function studentsQuery(): Builder
     {
         $userIdsInAgence = $this->agenceId

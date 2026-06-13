@@ -5,13 +5,6 @@ namespace App\Console\Commands;
 use App\Models\ActivityLog;
 use Illuminate\Console\Command;
 
-/**
- * Purge des LOGS MÉTIERS au-delà de la rétention de 6 mois glissants.
- *
- * Planifiée quotidiennement (voir App\Console\Kernel::schedule).
- * Les logs TECHNIQUES, eux, sont purgés automatiquement par Monolog
- * (paramètre 'days' => 30 du canal "technique"), donc non concernés ici.
- */
 class PurgeActivityLogs extends Command
 {
     protected $signature = 'logs:purge-metier

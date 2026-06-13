@@ -55,8 +55,6 @@ class Planning extends Model
         return $this->belongsTo(DemandeConge::class);
     }
 
-
-    // Legacy compatibility with the previous API payload field names.
     public function getStatusAttribute(): ?string
     {
         return array_search($this->status_id, self::STATUS_MAP, true) ?: null;

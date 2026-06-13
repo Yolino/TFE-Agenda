@@ -36,21 +36,33 @@
         <button wire:click="$set('filter', 'toutes')" class="btn btn-sm {{ $filter === 'toutes' ? 'btn-primary' : 'btn-ghost' }}">Toutes</button>
     </div>
 
-    {{-- Filtre Agence --}}
-    <div class="mb-4 flex flex-wrap gap-2 items-center">
-        <span class="text-sm font-semibold">Agence :</span>
-        <x-agence-autocomplete
-            :agences="$agences"
-            :selected="$filterAgenceId"
-            placeholder="Toutes les agences"
-            nullable
-            null-label="Toutes les agences"
-            input-class="input input-bordered input-sm w-64"
-            dropdown-class="w-64"
-            @selected="$wire.filterByAgence($event.detail.value)" />
+    <div class="mb-4 flex flex-col gap-3">
+        <div class="flex flex-wrap gap-2 items-center">
+            <span class="text-sm font-semibold">Agence :</span>
+            <x-agence-autocomplete
+                :agences="$agences"
+                :selected="$filterAgenceId"
+                placeholder="Toutes les agences"
+                nullable
+                null-label="Toutes les agences"
+                input-class="input input-bordered input-sm w-64"
+                dropdown-class="w-64"
+                @selected="$wire.filterByAgence($event.detail.value)" />
+            @if($filterUserId !== null)
+                <span class="text-xs text-base-content/50 italic">(le filtre agence est ignoré quand un utilisateur est sélectionné)</span>
+            @endif
+        </div>
+
+        <div class="flex flex-wrap gap-x-6 gap-y-3 items-center">
+            <x-filter-user
+                :results="$userResults"
+                :search="$userSearch"
+                :selected-label="$filterUserLabel" />
+
+            <x-filter-period :years="$years" />
+        </div>
     </div>
 
-    {{-- Tableau groupé par agence --}}
     <div class="space-y-6">
         @forelse($demandesByAgence as $agenceLabel => $items)
             <div class="card bg-base-100 shadow-sm border border-base-200">
@@ -58,7 +70,7 @@
                     <h2 class="card-title text-base">
                         <i class="fa-duotone fa-building text-accent mr-1"></i>
                         {{ $agenceLabel }}
-                        <span class="badge badge-ghost badge-sm">{{ $items->count() }}</span>
+                        <span class="badge badge-ghost badge-sm">{{ $countsByAgence[$agenceLabel] ?? $items->count() }}</span>
                     </h2>
 
                     <div class="overflow-x-auto">
@@ -136,5 +148,9 @@
                 <span>Aucune demande de congé.</span>
             </div>
         @endforelse
+    </div>
+
+    <div class="mt-4">
+        {{ $demandes->links() }}
     </div>
 </div>

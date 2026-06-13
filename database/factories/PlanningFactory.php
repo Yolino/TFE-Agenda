@@ -26,7 +26,6 @@ class PlanningFactory extends Factory
         ];
     }
 
-    /** Jour de planning rattaché à une demande de congé. */
     public function pourConge(int $demandeCongeId): static
     {
         return $this->state(fn () => [

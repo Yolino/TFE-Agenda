@@ -6,20 +6,8 @@ use App\Models\Planning;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * Le planning convertit en permanence un libellé métier ("conge", "maladie"...)
- * en identifiant stocké en base (status_id), et inversement. Toute dérive de
- * cette table de correspondance casserait l'affichage ET les écritures du
- * planning : c'est un point sensible, testé exhaustivement et sans base de
- * données (logique pure).
- */
 class PlanningStatusMappingTest extends TestCase
 {
-    /**
-     * Source unique de vérité : chaque libellé et son identifiant attendu.
-     *
-     * @return array<string, array{0: string, 1: int}>
-     */
     public static function statutProvider(): array
     {
         return [

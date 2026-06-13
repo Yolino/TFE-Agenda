@@ -118,7 +118,7 @@ class SsoClientController extends Controller
 
             Session::put('sso_access_token', $accessToken);
 
-            return redirect()->route('mon-planning.index')
+            return redirect()->route($user->homeRoute())
                 ->with('success', 'Connexion réussie via SSO');
         } catch (\Exception $e) {
             return redirect('/')

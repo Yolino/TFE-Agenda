@@ -12,7 +12,6 @@
 
     <div x-data='calendar({{ $targetUserId }}, @json($userEntries), @json($currentYear), @json($currentMonth), @json($startTime), @json($endTime), @json($startTimeAfternoon), @json($endTimeAfternoon), @json($firstEditableDate), @json(auth()->user()->is_admin()))' class="card-eg">
 
-        {{-- Sélecteur d'utilisateur pour les admins --}}
         @if(auth()->user()->is_admin())
         <div class="flex items-center gap-3 mb-4 p-3 bg-base-200 rounded-box">
             <i class="fa-duotone fa-user-gear text-primary"></i>
@@ -35,13 +34,11 @@
             </button>
         </div>
 
-        {{-- Indicateur copier/coller (usage unique) --}}
         <div x-show="copiedData" x-transition class="flex items-center justify-between mb-4 p-2 bg-info/20 rounded-box text-sm">
             <span><i class="fa-duotone fa-clipboard mr-1"></i> Tuile copiée — cliquez sur un jour pour coller (usage unique)</span>
             <button @click="cancelCopy()" class="btn btn-xs btn-ghost">Annuler</button>
         </div>
 
-        {{-- Indicateur de verrouillage temporel --}}
         <div x-show="isMonthFullyLocked()" x-transition class="flex items-center gap-2 mb-4 p-2 bg-warning/20 rounded-box text-sm">
             <i class="fa-duotone fa-lock"></i>
             <span>Ce mois est verrouillé. L'édition n'est possible qu'à partir du <strong x-text="formatLockDate()"></strong> (lundi de la semaine suivante).</span>
@@ -86,7 +83,6 @@
                     }">
                         <p x-text="formatStatus(isDayFilled({{ $i }}).entry.status, isDayFilled({{ $i }}).entry)" class="text-[10px] xl:text-base text-center font-bold"></p>
 
-                        {{-- Affichage du type de congé si lié à une demande acceptée --}}
                         <template x-if="isDayFilled({{ $i }}).entry.demande_conge_type && isDayFilled({{ $i }}).entry.demande_conge_status === 'acceptee'">
                             <p class="text-[8px] xl:text-xs text-center opacity-80 italic" x-text="congeTypeLabels[isDayFilled({{ $i }}).entry.demande_conge_type] || isDayFilled({{ $i }}).entry.demande_conge_type"></p>
                         </template>
@@ -115,7 +111,6 @@
                     </div>
                 </template>
 
-                {{-- Badge "Coller" affiché au survol quand le mode copie est actif --}}
                 <template x-if="copiedData && daysInMonthArray[{{ $i - 1 }}] && copiedDayIndex !== {{ $i }} && !getHoliday({{ $i }}) && !isDayLocked({{ $i }})">
                     <div class="absolute inset-0 hidden group-hover:flex flex-col items-center justify-center backdrop-blur-[2px] bg-info/10 rounded">
                         <div class="flex flex-col items-center gap-1 bg-info text-info-content rounded-xl px-2 py-1 shadow-lg scale-90 xl:scale-100">
@@ -146,7 +141,7 @@
         </div>
         @endfor
     </div>
-    </div>{{-- /overflow-x-auto --}}
+    </div>
 
     @include('partials.planning-day-modal')
 </div>
@@ -162,7 +157,6 @@
                 start_afternoon: startTimeAfternoon, end_afternoon: endTimeAfternoon,
             },
         }), {
-            // --- État spécifique au calendrier mensuel perso ---
             holidaysBE: {},
             holidaysInitialized: false,
             firstEditableDate: firstEditableDate,
@@ -227,7 +221,6 @@
                 return this.holidaysBE[date] || null;
             },
 
-            // Verrouillage temporel : seules les dates >= lundi de la semaine prochaine sont éditables
             getDateForDay(dayIndex) {
                 const selectedDay = this.daysInMonthArray[dayIndex - 1];
                 if (!selectedDay) return null;
@@ -356,9 +349,7 @@
                 };
             },
 
-            // Gestion du clic sur un jour : coller si copie active, sinon ouvrir le modal
             handleDayClick(day) {
-                // Bloquer toute interaction sur un jour férié
                 if (this.getHoliday(day)) {
                     Swal.fire({
                         title: 'Jour férié',
@@ -373,7 +364,6 @@
                     return;
                 }
 
-                // Verrouillage temporel : refuser toute édition sur les semaines passées / courante
                 if (this.isDayLocked(day)) {
                     Swal.fire({
                         title: 'Semaine verrouillée',
@@ -395,12 +385,10 @@
                 }
             },
 
-            // Copier les données d'une tuile
             copyEntry(dayIndex) {
                 const { entry } = this.isDayFilled(dayIndex);
                 if (!entry) return;
 
-                // Un utilisateur non-admin ne peut pas dupliquer un statut réservé aux admins.
                 if (!this.isAdmin && this.adminOnlyStatuses.includes(entry.status)) {
                     Swal.fire({
                         title: 'Action interdite',
@@ -442,11 +430,9 @@
                 this.copiedDayIndex = null;
             },
 
-            // Coller les données copiées sur un autre jour
             pasteEntry(dayIndex) {
                 if (!this.copiedData || !this.daysInMonthArray[dayIndex - 1]) return;
 
-                // Bloquer totalement le coller sur un jour férié
                 if (this.getHoliday(dayIndex)) {
                     Swal.fire({
                         title: 'Action interdite',
@@ -457,7 +443,6 @@
                     return;
                 }
 
-                // Bloquer si la cible est dans une semaine verrouillée
                 if (this.isDayLocked(dayIndex)) {
                     Swal.fire({
                         title: 'Semaine verrouillée',
@@ -470,7 +455,6 @@
                 const target = this.isDayFilled(dayIndex);
                 const protectedStatuses = ['conge', 'maladie', 'recup', 'css'];
 
-                // Si la cible contient un congé/maladie : confirmation avant écrasement
                 if (target.filled && protectedStatuses.includes(target.entry.status)) {
                     const labelMap = { conge: 'Congé', maladie: 'Maladie', recup: 'Récupération', css: 'Congé sans solde' };
                     Swal.fire({
@@ -511,7 +495,6 @@
                     custom: this.copiedData.custom || null,
                 };
 
-                // Si la tuile cible est déjà remplie, on appelle update (PATCH) plutôt que store
                 const isOverwrite = target.filled;
                 const url = isOverwrite ? `/mon-planning/update/${target.entryId}` : '/mon-planning/store';
                 if (isOverwrite) bodyData._method = 'PATCH';
@@ -553,7 +536,6 @@
                 });
             },
 
-            // Changement d'utilisateur (admin)
             switchUser(newUserId) {
                 window.location.href = `/mon-planning/?user_id=${newUserId}`;
             },

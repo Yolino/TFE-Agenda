@@ -21,14 +21,6 @@ class PlanningController extends Controller
     {
     }
 
-    /**
-     * Trace une modification d'horaires effectuée POUR UN AUTRE utilisateur
-     * (typiquement un admin qui touche au planning de quelqu'un d'autre).
-     *
-     * Point unique de décision : ne loggue RIEN si l'utilisateur modifie son
-     * propre planning. On évite ainsi le bruit et on ne garde que le cas
-     * sensible « quelqu'un modifie les horaires d'autrui ».
-     */
     private function logForeignScheduleChange(
         string $action,
         int $ownerUserId,
@@ -54,22 +46,18 @@ class PlanningController extends Controller
         $startTimeAfternoon = '13:00';
         $endTimeAfternoon = '16:30';
 
-        // Admin peut consulter le planning d'un autre utilisateur (via UserAutocomplete)
         $targetUserId = auth()->user()->is_admin()
             ? (int) $request->input('user_id', auth()->id())
             : auth()->id();
 
         Gate::authorize('manage-planning', $targetUserId);
 
-        // Génération des options de mois
         $months = collect(range(1, 12))->mapWithKeys(function ($month) {
             return [$month => Carbon::create(null, $month)->locale('fr')->isoFormat('MMMM')];
         });
 
-        // Génération des options d'année (uniquement l'année courante et la suivante)
         $years = collect([$currentYear, $currentYear + 1]);
 
-        // Affichage des jours de la semaine
         $weekDays = collect(range(0, 6))->map(function ($day) {
             return Carbon::now()->startOfWeek()->addDays($day)->locale('fr')->isoFormat('dddd');
         });
@@ -162,7 +150,6 @@ class PlanningController extends Controller
         $endDate = clone $startDate;
         $endDate->endOfWeek(Carbon::SUNDAY);
 
-        // Statuts protégés : l'auto ne les écrase jamais
         $protectedStatuses = ['maladie', 'conge', 'recup', 'css', 'indisponible', 'jour_ferie'];
         $protectedStatusIds = array_filter(
             array_map(fn($s) => Planning::STATUS_MAP[$s] ?? null, $protectedStatuses)
@@ -199,7 +186,6 @@ class PlanningController extends Controller
                 continue;
             }
 
-            // Ne pas écraser un jour déjà rempli avec un statut protégé
             $existing = $existingEntries->get($startDate->format('Y-m-d'));
 
             if ($existing && in_array($existing->status_id, $protectedStatusIds)) {
@@ -269,7 +255,6 @@ class PlanningController extends Controller
 
         Gate::authorize('manage-planning', (int) $entry->user_id);
 
-        // Propriétaire réel du planning + instantané AVANT modification (pour l'audit).
         $ownerId = (int) $entry->user_id;
         $before  = [
             'date'                 => $entry->date,
@@ -284,16 +269,11 @@ class PlanningController extends Controller
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
         }
 
-        // Si on modifie un jour adossé à une demande de congé : annulation cascade
-        // de la demande + suppression de tous les jours liés (la tuile est ensuite
-        // recréée selon les nouvelles données).
         if ($entry->demande_conge_id) {
             $newUserId = (int) $credentials['user_id'];
             $newDate = $credentials['date'];
             $newStatus = $credentials['status'] ?? null;
 
-            // L'admin peut "réécrire" la tuile en gardant le même statut de congé :
-            // dans ce cas, on ne casse pas la demande sous-jacente.
             $stillSameCongeContext = $entry->user_id === $newUserId
                 && $entry->date === $newDate
                 && in_array($newStatus, ['conge', 'recup', 'css'], true)
@@ -364,9 +344,6 @@ class PlanningController extends Controller
             return response()->json(['message' => 'Cette semaine est verrouillée. Vous ne pouvez modifier le planning qu\'à partir du lundi de la semaine suivante.'], 422);
         }
 
-        // Si la tuile supprimée est rattachée à une demande de congé,
-        // on annule la demande complète : cela supprime également les autres
-        // jours liés via le service.
         if ($entry->demande_conge_id) {
             $this->cancellationService->cancelFromPlanning($entry, auth()->id());
 
@@ -376,8 +353,6 @@ class PlanningController extends Controller
             ], 200);
         }
 
-        // Instantané AVANT suppression (le congé en cascade est déjà tracé plus haut
-        // via conge.cancelled, donc on ne loggue ici que la suppression simple).
         $ownerId  = (int) $entry->user_id;
         $snapshot = ['date' => $entry->date, 'status' => $entry->status];
 

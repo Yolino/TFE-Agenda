@@ -15,6 +15,11 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
+        // Un directeur n'a pas d'horaire type : on ne génère ni n'affiche de templates.
+        if (! $user->hasPersonalAgenda()) {
+            return view('profile.index', ['planning' => (object) []]);
+        }
+
         if ($user->planningTemplates()->count() === 0) {
             $this->createDefaultTemplates($user);
         }

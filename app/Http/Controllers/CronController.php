@@ -2,40 +2,41 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-use App\Mail\PlanningEmail;
-use Carbon\Carbon;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Artisan;
 
 class CronController extends Controller
 {
-    public function sendPlanning()
+    public function planningHebdo(): Response
     {
-        $timezone = 'Europe/Brussels';
-        $nextMonday = Carbon::now($timezone)->next(Carbon::MONDAY);
-        $nextSaturday = $nextMonday->copy()->addDays(5);
+        return $this->run('planning:send-weekly');
+    }
 
-        $dateRange = $nextMonday->format('d/m/Y') . ' au ' . $nextSaturday->format('d/m/Y');
-        $fromAddress = env('MAIL_FROM_ADDRESS');
-        $fromName = 'Luca Guglielmi';
-        $subject = 'Planning du ' . $dateRange;
-        $originalPath = public_path('pdf/planning_luca.pdf');
-        $newFileName = 'luca_guglielmi_planning_du_' . str_replace([" ", "/"], "_", $dateRange) . '.pdf';
-        $newPath = public_path('pdf/' . $newFileName);
+    public function congesAttente(): Response
+    {
+        return $this->run('conges:notify-pending');
+    }
 
-        // Copy the file to a new location
-        if (!copy($originalPath, $newPath)) {
-            Log::error('Failed to copy file (' . $newFileName . ').');
-            // return response()->json(['message' => 'Failed to copy file.'], 500);
+    public function test(): Response
+    {
+        @set_time_limit(0);
+        Artisan::call('crons:test');
+
+        return response(Artisan::output(), 200)
+            ->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
+
+    private function run(string $command): Response
+    {
+        if (! config('crons.emails_enabled')) {
+            return response("CRON désactivé (EMAIL_CRONS_ENABLED=false) — {$command} non exécuté.\n", 200)
+                ->header('Content-Type', 'text/plain; charset=UTF-8');
         }
 
-        Mail::to('salaire@pilote.be')->send(new PlanningEmail($fromAddress, $fromName, $subject, $newPath, $dateRange));
+        @set_time_limit(0);
+        Artisan::call($command);
 
-        // Delete the file
-        unlink($newPath);
-
-        Log::info('Email sent successfully (' . $newFileName . ').');
-        // return response()->json(['message' => 'Email sent.'], 200);
+        return response(Artisan::output(), 200)
+            ->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 }

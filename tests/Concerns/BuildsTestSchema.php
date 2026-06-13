@@ -5,19 +5,6 @@ namespace Tests\Concerns;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Construit, sur les connexions SQLite de test, le schéma minimal des tables
- * réellement sollicitées par les tests.
- *
- * Pourquoi ce trait plutôt que les vraies migrations ?
- *  - Les tables de la base globale "bti" (users, ...) n'ont AUCUNE migration
- *    dans ce dépôt : elles vivent dans une base externe.
- *  - Certaines migrations "mysql" utilisent du DDL propre à MySQL
- *    (ex : ALTER TABLE ... MODIFY COLUMN ... ENUM) incompatible avec SQLite.
- *
- * Centraliser ici la définition du schéma de test = principe DRY : toutes les
- * classes de test qui ont besoin d'une base réutilisent ce point unique.
- */
 trait BuildsTestSchema
 {
     protected function buildTestSchema(): void
@@ -26,7 +13,6 @@ trait BuildsTestSchema
         $this->buildBtiSchema();
     }
 
-    /** Tables locales de l'application (connexion "mysql"). */
     private function buildLocalSchema(): void
     {
         $schema = Schema::connection('mysql');
@@ -99,7 +85,6 @@ trait BuildsTestSchema
         });
     }
 
-    /** Tables de la base globale (connexion "bti"). */
     private function buildBtiSchema(): void
     {
         Schema::connection('bti')->create('users', function (Blueprint $table) {
@@ -117,6 +102,23 @@ trait BuildsTestSchema
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+        });
+
+        Schema::connection('bti')->create('departements', function (Blueprint $table) {
+            $table->id();
+            $table->string('letter')->nullable();
+            $table->string('nom')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::connection('bti')->create('departement_user', function (Blueprint $table) {
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('departement_id');
+        });
+
+        Schema::connection('bti')->create('pivot_a_u', function (Blueprint $table) {
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('agence_id');
         });
     }
 }

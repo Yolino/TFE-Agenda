@@ -9,17 +9,8 @@ use Illuminate\Database\Eloquent\Collection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-/**
- * Les rôles déterminent qui peut accepter des congés, consulter les logs, etc.
- * Cette logique est donc critique pour la sécurité de l'application.
- *
- * On la teste SANS base de données : les relations Eloquent (profile,
- * departements) sont injectées en mémoire via setRelation(), ce qui isole la
- * règle métier de toute infrastructure et rend le test rapide et déterministe.
- */
 class UserRolesTest extends TestCase
 {
-    /** Construit un utilisateur dont seule la relation "profile" est définie. */
     private function utilisateurAvecProfil(?bool $estAdmin): User
     {
         $user = new User();
@@ -31,7 +22,6 @@ class UserRolesTest extends TestCase
         return $user;
     }
 
-    /** Construit un utilisateur rattaché aux départements dont on donne les lettres. */
     private function utilisateurAvecDepartements(array $lettres): User
     {
         $user = new User();
@@ -43,9 +33,6 @@ class UserRolesTest extends TestCase
         return $user;
     }
 
-    /**
-     * @return array<string, array{0: ?bool, 1: bool}>
-     */
     public static function adminProvider(): array
     {
         return [
@@ -61,9 +48,6 @@ class UserRolesTest extends TestCase
         $this->assertSame($attendu, $this->utilisateurAvecProfil($estAdmin)->is_admin());
     }
 
-    /**
-     * @return array<string, array{0: array<int, string>, 1: bool}>
-     */
     public static function directeurProvider(): array
     {
         return [
@@ -80,9 +64,6 @@ class UserRolesTest extends TestCase
         $this->assertSame($attendu, $this->utilisateurAvecDepartements($lettres)->is_directeur());
     }
 
-    /**
-     * @return array<string, array{0: bool, 1: array<int, string>, 2: bool}>
-     */
     public static function accesLogsProvider(): array
     {
         return [
@@ -107,6 +88,69 @@ class UserRolesTest extends TestCase
         )));
 
         $this->assertSame($attendu, $user->canAccessLogs());
+    }
+
+    private function utilisateur(bool $estAdmin, array $lettres): User
+    {
+        $user = new User();
+        $user->setRelation('profile', new UserAgendaProfile(['is_admin' => $estAdmin]));
+        $user->setRelation('departements', new Collection(array_map(
+            fn (string $lettre) => new Departement(['letter' => $lettre]),
+            $lettres
+        )));
+
+        return $user;
+    }
+
+    public static function adminOuDirecteurProvider(): array
+    {
+        return [
+            'administrateur seul' => [true, ['I'], true],
+            'directeur seul'      => [false, ['D'], true],
+            'admin et directeur'  => [true, ['D'], true],
+            'ni l\'un ni l\'autre' => [false, ['I'], false],
+        ];
+    }
+
+    #[DataProvider('adminOuDirecteurProvider')]
+    public function test_can_manage_users_pour_admin_ou_directeur(bool $estAdmin, array $lettres, bool $attendu): void
+    {
+        $this->assertSame($attendu, $this->utilisateur($estAdmin, $lettres)->canManageUsers());
+    }
+
+    #[DataProvider('adminOuDirecteurProvider')]
+    public function test_can_edit_global_planning_pour_admin_ou_directeur(bool $estAdmin, array $lettres, bool $attendu): void
+    {
+        $this->assertSame($attendu, $this->utilisateur($estAdmin, $lettres)->canEditGlobalPlanning());
+    }
+
+    public static function gestionCongesProvider(): array
+    {
+        return [
+            'directeur'            => [false, ['D'], true],
+            'admin non directeur'  => [true, ['I'], false],
+            'ni l\'un ni l\'autre' => [false, ['I'], false],
+        ];
+    }
+
+    #[DataProvider('gestionCongesProvider')]
+    public function test_can_manage_conges_reserve_aux_directeurs(bool $estAdmin, array $lettres, bool $attendu): void
+    {
+        $this->assertSame($attendu, $this->utilisateur($estAdmin, $lettres)->canManageConges());
+    }
+
+    public function test_un_directeur_n_a_pas_d_agenda_personnel(): void
+    {
+        $this->assertFalse($this->utilisateur(false, ['D'])->hasPersonalAgenda());
+        $this->assertTrue($this->utilisateur(true, ['I'])->hasPersonalAgenda());
+        $this->assertTrue($this->utilisateur(false, ['I'])->hasPersonalAgenda());
+    }
+
+    public function test_la_route_d_accueil_depend_du_role(): void
+    {
+        $this->assertSame('planning', $this->utilisateur(false, ['D'])->homeRoute());
+        $this->assertSame('mon-planning.index', $this->utilisateur(true, ['I'])->homeRoute());
+        $this->assertSame('mon-planning.index', $this->utilisateur(false, ['C'])->homeRoute());
     }
 
     public function test_is_etudiant_se_base_sur_le_niveau_d_acces(): void

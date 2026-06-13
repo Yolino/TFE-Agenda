@@ -7,11 +7,6 @@ use App\Models\Planning;
 use App\Services\CongeCancellationService;
 use Tests\DatabaseTestCase;
 
-/**
- * L'annulation d'un congé doit : marquer la demande comme "annulee", tracer
- * l'auteur, ET supprimer en cascade les jours de planning qui lui sont liés —
- * sans toucher aux autres jours. C'est une opération transactionnelle sensible.
- */
 class CongeCancellationServiceTest extends DatabaseTestCase
 {
     private CongeCancellationService $service;
@@ -33,7 +28,6 @@ class CongeCancellationServiceTest extends DatabaseTestCase
             'status_id'        => Planning::STATUS_MAP['conge'],
         ]);
 
-        // Jour de planning SANS lien : il ne doit pas être supprimé.
         Planning::factory()->create(['user_id' => 1, 'demande_conge_id' => null]);
 
         $this->service->cancel($conge, 77);
@@ -62,7 +56,6 @@ class CongeCancellationServiceTest extends DatabaseTestCase
         $this->service->cancel($conge, 77);
 
         $conge->refresh();
-        // Rien ne change : ni l'auteur initial de l'annulation, ni le planning.
         $this->assertSame(5, (int) $conge->cancelled_by);
         $this->assertSame(1, Planning::where('demande_conge_id', $conge->id)->count());
     }

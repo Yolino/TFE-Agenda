@@ -33,15 +33,24 @@ class CongeController extends Controller
             $c->formattedEndDate   = Carbon::parse($c->end_date)->translatedFormat('d M Y');
         });
 
+        // Une demande appartient à l'historique dès qu'elle est terminée :
+        // soit refusée/annulée, soit dont la période est passée.
+        $historiqueConstraint = function ($query) use ($today) {
+            $query->whereIn('status', ['refusee', 'annulee'])
+                  ->orWhere('end_date', '<', $today);
+        };
+
+        // « Mes demandes » : uniquement les demandes encore actives dans le circuit.
         $conges = DemandeConge::with(['decidedBy', 'cancelledBy', 'user'])
             ->where('user_id', $user->id)
+            ->whereIn('status', ['en_cours', 'envoyee', 'acceptee'])
             ->where('end_date', '>=', $today)
             ->orderBy('start_date')
-            ->get()
-            ->map($format);
+            ->paginate(10, ['*'], 'demandes_page')
+            ->through($format);
 
         $anneesDisponibles = DemandeConge::where('user_id', $user->id)
-            ->where('end_date', '<', $today)
+            ->where($historiqueConstraint)
             ->selectRaw('YEAR(end_date) as annee')
             ->distinct()
             ->orderBy('annee', 'desc')
@@ -51,7 +60,7 @@ class CongeController extends Controller
 
         $historiqueQuery = DemandeConge::with(['decidedBy', 'cancelledBy', 'user'])
             ->where('user_id', $user->id)
-            ->where('end_date', '<', $today);
+            ->where($historiqueConstraint);
 
         if ($selectedYear !== 'all') {
             $historiqueQuery->whereYear('end_date', $selectedYear);
@@ -59,8 +68,9 @@ class CongeController extends Controller
 
         $historique = $historiqueQuery
             ->orderBy('start_date', 'desc')
-            ->get()
-            ->map($format);
+            ->paginate(10, ['*'], 'historique_page')
+            ->through($format)
+            ->appends(['year' => $selectedYear]);
 
         $currentYear = (int) $today->year;
         $balance = [
@@ -105,6 +115,11 @@ class CongeController extends Controller
     public function generatePDF($id)
     {
         $conge = DemandeConge::with(['user', 'decidedBy', 'cancelledBy'])->findOrFail($id);
+
+        $user = auth()->user();
+        if (! $user || ((int) $conge->user_id !== (int) $user->id && ! $user->is_directeur())) {
+            abort(403);
+        }
 
         $conge->formattedStartDate = Carbon::parse($conge->start_date)->translatedFormat('d M Y');
         $conge->formattedEndDate = Carbon::parse($conge->end_date)->translatedFormat('d M Y');
@@ -180,11 +195,6 @@ class CongeController extends Controller
         return to_route('mes-conges.index')->with('success', 'Votre demande de congé a bien été supprimée.');
     }
 
-    /**
-     * Annule une demande de congé déjà envoyée ou acceptée.
-     * Supprime également en cascade les jours du planning marqués
-     * comme congé liés à cette demande.
-     */
     public function cancel($id): RedirectResponse
     {
         $conge = DemandeConge::where('id', $id)

@@ -16,8 +16,6 @@
     <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="//cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script>
-        // Redéfinit Swal globalement avec un mixin qui force la visibilité des boutons
-        // (fix conflit Tailwind/DaisyUI qui remet background-color: transparent sur les <button>)
         document.addEventListener('DOMContentLoaded', function () {
             window.Swal = Swal.mixin({
                 didOpen: function (popup) {
@@ -25,7 +23,6 @@
                         btn.style.setProperty('opacity', '1', 'important');
                         btn.style.setProperty('visibility', 'visible', 'important');
                         btn.style.setProperty('color', 'white', 'important');
-                        // Applique un background par défaut seulement si SweetAlert n'en a pas déjà mis un
                         if (!btn.style.background && !btn.style.backgroundColor) {
                             if (btn.classList.contains('swal2-confirm')) btn.style.backgroundColor = '#3085d6';
                             if (btn.classList.contains('swal2-cancel'))  btn.style.backgroundColor = '#6b7280';
@@ -43,7 +40,6 @@
 
 <body class="font-agenda flex min-h-screen bg-gray-100" x-data="{ isSidebarOpen: window.innerWidth > 768 }" @toggle-sidebar.window="isSidebarOpen = !isSidebarOpen">
     @auth
-    {{-- Backdrop mobile : ferme la sidebar au clic sur le fond --}}
     <div x-show="isSidebarOpen" x-cloak
          @click="$dispatch('toggle-sidebar')"
          class="fixed inset-0 bg-black bg-opacity-40 z-[9] md:hidden"

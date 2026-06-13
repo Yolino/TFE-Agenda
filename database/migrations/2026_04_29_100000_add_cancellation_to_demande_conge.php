@@ -9,7 +9,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Étendre l'enum status pour accepter "annulee"
         DB::statement("ALTER TABLE demande_conge MODIFY COLUMN status ENUM('en_cours','envoyee','acceptee','refusee','annulee') NOT NULL DEFAULT 'en_cours'");
 
         Schema::table('demande_conge', function (Blueprint $table) {

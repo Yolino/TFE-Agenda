@@ -5,15 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Log MÉTIER : trace une action sensible (qui / quoi / quand / sur quoi).
- *
- * Rétention : 6 mois glissants, assurée par la commande `logs:purge-metier`
- * planifiée dans App\Console\Kernel.
- */
 class ActivityLog extends Model
 {
-    /** Données locales => même connexion que user_agenda_profiles. */
     protected $connection = 'mysql';
 
     protected $table = 'logs';
@@ -32,14 +25,6 @@ class ActivityLog extends Model
         'properties' => 'array',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | SCOPES DE FILTRAGE (réutilisés tels quels par le composant Livewire)
-    |--------------------------------------------------------------------------
-    | Centraliser la logique de filtrage ici évite de la dupliquer dans chaque
-    | écran qui consommerait les logs (principe DRY).
-    */
-
     public function scopeForUser(Builder $query, $userId): Builder
     {
         return $query->when($userId !== null && $userId !== '', fn ($q) => $q->where('user_id', $userId));
@@ -50,7 +35,6 @@ class ActivityLog extends Model
         return $query->when($action, fn ($q) => $q->where('action', $action));
     }
 
-    /** Filtre sur une plage de dates (bornes optionnelles, format Y-m-d). */
     public function scopeBetweenDates(Builder $query, ?string $from, ?string $to): Builder
     {
         return $query
@@ -69,17 +53,6 @@ class ActivityLog extends Model
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | PRÉSENTATION (centralisée pour la vue)
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Couleur du badge DaisyUI déduite du verbe de l'action.
-     * Ex : "conge.accepted" => badge-success ; "user.deleted" => badge-error.
-     * Un seul endroit décide des couleurs => cohérence visuelle garantie.
-     */
     public function getBadgeClassAttribute(): string
     {
         $verb = str_contains($this->action, '.')
@@ -105,16 +78,75 @@ class ActivityLog extends Model
         };
     }
 
-    /**
-     * Vrai si le log concerne une écriture sur la base globale BTI
-     * (action préfixée "bti."). Utilisé par la vue pour la mise en évidence.
-     */
     public function getIsBtiAttribute(): bool
     {
         return str_starts_with((string) $this->action, 'bti.');
     }
 
-    /** Libellé court et lisible du sujet concerné. */
+    public function getActionLabelAttribute(): string
+    {
+        return self::labelFor((string) $this->action);
+    }
+
+
+    public static function labelFor(string $action): string
+    {
+        $labels = [
+            'conge.accepted'             => 'Congé accepté',
+            'conge.refused'              => 'Congé refusé',
+            'conge.cancelled'            => 'Congé annulé',
+            'justificatif.created'       => 'Justificatif déposé',
+            'planning.created_for_other' => 'Horaire ajouté',
+            'planning.updated_for_other' => 'Horaire modifié',
+            'planning.filled_for_other'  => 'Horaire rempli',
+            'planning.deleted_for_other' => 'Horaire supprimé',
+        ];
+
+        if (isset($labels[$action])) {
+            return $labels[$action];
+        }
+
+        if (str_starts_with($action, 'bti.')) {
+            return self::btiLabelFor($action);
+        }
+
+        return $action;
+    }
+
+    private static function btiLabelFor(string $action): string
+    {
+
+        if (preg_match('/^bti\.user\.(.+)_changed$/', $action, $m)) {
+            $relations = [
+                'agence'      => "Changement d'agence",
+                'departement' => 'Changement de département',
+                'societe'     => 'Changement de société',
+            ];
+
+            return ($relations[$m[1]] ?? 'Changement de ' . $m[1]) . ' (BTI)';
+        }
+
+
+        $parts = explode('.', $action);
+
+        $entities = [
+            'users'        => 'Utilisateur',
+            'agences'      => 'Agence',
+            'departements' => 'Département',
+            'societes'     => 'Société',
+        ];
+        $events = [
+            'created' => 'création',
+            'updated' => 'modification',
+            'deleted' => 'suppression',
+        ];
+
+        $entity = $entities[$parts[1] ?? ''] ?? ($parts[1] ?? '');
+        $event  = $events[$parts[2] ?? ''] ?? ($parts[2] ?? '');
+
+        return trim("{$entity} — {$event}") . ' (BTI)';
+    }
+
     public function getSubjectLabelAttribute(): ?string
     {
         if (! $this->subject_type) {

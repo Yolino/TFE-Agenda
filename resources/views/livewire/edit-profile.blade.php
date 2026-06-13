@@ -1,5 +1,4 @@
 <div>
-    {{-- Infos profil + boutons d'action --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
         <div>
             <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-0.5">Prénom</p>
@@ -33,7 +32,6 @@
         @endif
     </div>
 
-    {{-- Boutons --}}
     <div class="flex flex-wrap gap-3">
         <button wire:click="openModal" class="btn btn-primary">
             <i class="fa-solid fa-pen-to-square mr-2"></i>
@@ -49,7 +47,6 @@
         </button>
     </div>
 
-    {{-- Modale édition profil --}}
     <div x-data="{ open: @entangle('showModal') }">
         <div x-show="open" x-cloak x-transition
              class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
@@ -150,7 +147,6 @@
         </div>
     </div>
 
-    {{-- SweetAlert listener (une seule instance par page) --}}
     @once
     <script>
         document.addEventListener('livewire:initialized', () => {

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Mail\PlanningEmail;
+use App\Models\Agence;
 use App\Services\PlanningExportService;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Validate;
@@ -31,6 +32,7 @@ class SendPlanningEmail extends Component
         $pdfPath   = $exporter->generatePdf($this->week, $this->year, $this->agenceId);
         $excelPath = $exporter->generateExcel($this->week, $this->year, $this->agenceId);
         $sender    = auth()->user();
+        $agence    = $this->agenceId ? Agence::find($this->agenceId) : null;
 
         Mail::to($this->recipient)->send(new PlanningEmail(
             week: $this->week,
@@ -40,6 +42,7 @@ class SendPlanningEmail extends Component
             senderName: trim($sender->name . ' ' . $sender->firstname),
             senderTitle: $sender->fonction ?? null,
             senderPhone: $sender->phone ?? null,
+            agenceName: $agence?->display_name,
         ));
 
         @unlink($pdfPath);

@@ -17,8 +17,6 @@ class UserFactory extends Factory
     protected static ?string $password;
 
     /**
-     * État par défaut, aligné sur le schéma réel de la table "users" (base bti).
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -38,19 +36,16 @@ class UserFactory extends Factory
         ];
     }
 
-    /** Adresse e-mail non vérifiée. */
     public function unverified(): static
     {
         return $this->state(fn () => ['email_verified_at' => null]);
     }
 
-    /** Utilisateur de type "étudiant" (niveau d'accès dédié). */
     public function etudiant(): static
     {
         return $this->state(fn () => ['acces_level' => User::ROLE_ETUDIANT]);
     }
 
-    /** Compte désactivé. */
     public function inactif(): static
     {
         return $this->state(fn () => ['actif' => false]);

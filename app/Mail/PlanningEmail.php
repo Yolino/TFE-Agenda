@@ -26,6 +26,7 @@ class PlanningEmail extends Mailable
         public ?string $senderName = null,
         public ?string $senderTitle = null,
         public ?string $senderPhone = null,
+        public ?string $agenceName = null,
     ) {
         Carbon::setLocale('fr');
         $this->dateFrom = Carbon::now()->setISODate($year, $week, 1); // lundi
@@ -42,7 +43,7 @@ class PlanningEmail extends Mailable
                 config('mail.from.address'),
                 $this->senderName ?? config('mail.from.name'),
             ),
-            subject: 'Planning Crocheux — du ' . $from . ' au ' . $to,
+            subject: 'Planning ' . ($this->agenceName ?? 'Crocheux') . ' — du ' . $from . ' au ' . $to,
         );
     }
 
@@ -55,14 +56,17 @@ class PlanningEmail extends Mailable
 
     public function attachments(): array
     {
+        $agence = $this->agenceName
+            ? preg_replace('/[^A-Za-z0-9]+/', '_', $this->agenceName) . '_'
+            : '';
         $label = sprintf('S%02d-%d', $this->week, $this->year);
 
         return [
             Attachment::fromPath($this->pdfPath)
-                ->as('planning_' . $label . '.pdf')
+                ->as('planning_' . $agence . $label . '.pdf')
                 ->withMime('application/pdf'),
             Attachment::fromPath($this->excelPath)
-                ->as('planning_' . $label . '.xlsx')
+                ->as('planning_' . $agence . $label . '.xlsx')
                 ->withMime('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
         ];
     }

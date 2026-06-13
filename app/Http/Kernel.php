@@ -67,5 +67,8 @@ class Kernel extends HttpKernel
         'httpbasicauth' => \App\Http\Middleware\HttpBasicAuth::class,
         'is_admin' => \App\Http\Middleware\IsAdmin::class,
         'can_view_logs' => \App\Http\Middleware\EnsureCanViewLogs::class,
+        'is_directeur' => \App\Http\Middleware\IsDirecteur::class,
+        'admin_or_directeur' => \App\Http\Middleware\AdminOrDirecteur::class,
+        'has_personal_agenda' => \App\Http\Middleware\HasPersonalAgenda::class,
     ];
 }

@@ -22,8 +22,8 @@
                 </a>
                 <a role="tab" class="tab" :class="onglet === 'historique' ? 'tab-active' : ''" @click="onglet = 'historique'">
                     Historique
-                    @if($historique->count() > 0)
-                        <span class="badge badge-sm badge-primary ml-2">{{ $historique->count() }}</span>
+                    @if($historique->total() > 0)
+                        <span class="badge badge-sm badge-primary ml-2">{{ $historique->total() }}</span>
                     @endif
                 </a>
             </div>
@@ -36,7 +36,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Nb jours</th>
-                            <th>Certificat</th>
+                            <th class="text-center">Certificat</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -44,10 +44,10 @@
                         <tr class="hover">
                             <td>du {{ $justificatif->formattedStartDate }} au {{ $justificatif->formattedEndDate }}</td>
                             <td>{{ $justificatif->nb_jours . ($justificatif->nb_jours > 1 ? ' jours' : ' jour') }}</td>
-                            <td>
+                            <td class="text-center">
                                 <a href="{{ route('justificatif-absence.certificat', $justificatif) }}" target="_blank"
-                                   class="btn btn-sm btn-secondary tooltip" data-tip="Voir le certificat">
-                                    <i class="fa-duotone fa-file-medical"></i>
+                                   class="btn btn-sm btn-secondary tooltip inline-flex items-center justify-center" data-tip="Voir le certificat">
+                                    <i class="fa-duotone fa-file-medical leading-none"></i>
                                 </a>
                             </td>
                         </tr>
@@ -58,7 +58,7 @@
                         @endforelse
                     </tbody>
                 </table>
-                </div>{{-- /overflow-x-auto --}}
+                </div>
             </div>
 
             <!-- Onglet : Historique -->
@@ -88,7 +88,7 @@
                         <tr>
                             <th>Date</th>
                             <th>Nb jours</th>
-                            <th>Certificat</th>
+                            <th class="text-center">Certificat</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -96,10 +96,10 @@
                         <tr class="hover opacity-80">
                             <td>du {{ $justificatif->formattedStartDate }} au {{ $justificatif->formattedEndDate }}</td>
                             <td>{{ $justificatif->nb_jours . ($justificatif->nb_jours > 1 ? ' jours' : ' jour') }}</td>
-                            <td>
+                            <td class="text-center">
                                 <a href="{{ route('justificatif-absence.certificat', $justificatif) }}" target="_blank"
-                                   class="btn btn-sm btn-secondary tooltip" data-tip="Voir le certificat">
-                                    <i class="fa-duotone fa-file-medical"></i>
+                                   class="btn btn-sm btn-secondary tooltip inline-flex items-center justify-center" data-tip="Voir le certificat">
+                                    <i class="fa-duotone fa-file-medical leading-none"></i>
                                 </a>
                             </td>
                         </tr>
@@ -110,7 +110,11 @@
                         @endforelse
                     </tbody>
                 </table>
-                </div>{{-- /overflow-x-auto --}}
+                </div>
+
+                <div class="mt-4">
+                    {{ $historique->links() }}
+                </div>
             </div>
         </div>
 

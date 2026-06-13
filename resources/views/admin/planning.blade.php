@@ -10,7 +10,7 @@
         <h1 class="text-2xl md:text-4xl font-medium">
             Planning {{ $currentAgence?->display_name ?? '— aucune agence' }}
         </h1>
-        @if(auth()->user()->is_admin())
+        @if(auth()->user()->canEditGlobalPlanning())
             <livewire:agence-autocomplete :week="$selectedWeek" :year="$selectedYear" />
         @endif
     </div>
@@ -49,18 +49,16 @@
 
         <div class="flex justify-end mb-4"
              @student-assignment-changed.window="window.location.reload()">
-            {{-- Modales montées en arrière-plan, ouvertes via événement Alpine --}}
             <livewire:send-planning-email :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence?->id" />
-            @if(auth()->user()->is_admin() && $currentAgence)
+            @if(auth()->user()->canEditGlobalPlanning() && $currentAgence)
                 <livewire:student-assignment-manager :week="$selectedWeek" :year="$selectedYear" :agenceId="$currentAgence->id" />
             @endif
 
             <div class="dropdown dropdown-end">
                 <div tabindex="0" role="button"
-                     class="btn btn-primary tooltip tooltip-left"
+                     class="btn btn-primary tooltip tooltip-left inline-flex items-center gap-1"
                      data-tip="Options & exports">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                    <span class="hidden md:inline ml-1">Options</span>
+                    <i class="fa-solid fa-sliders leading-none hidden md:inline"></i>
                 </div>
 
                 <ul tabindex="0" class="dropdown-content menu menu-md bg-base-100 rounded-box shadow-lg z-10 w-60 p-2 mt-1 border border-base-200">
@@ -134,10 +132,8 @@
         })">
         <div class="overflow-x-auto -mx-4 px-4">
         <div class="grid gap-1 min-w-[640px]" style="grid-template-columns: minmax(120px,160px) repeat(6, 1fr);">
-            {{-- En-tête : colonne nom --}}
             <div class="text-center font-bold p-2 border rounded bg-gray-100"></div>
 
-            {{-- En-têtes des jours --}}
             @foreach($daysInWeek as $day)
             @php $isHoliday = isset($holidays[$day->toDateString()]); @endphp
             <div class="text-center font-bold p-2 border rounded {{ $isHoliday ? 'bg-teal-300 text-teal-900' : 'bg-gray-100' }}">
@@ -148,9 +144,7 @@
             </div>
             @endforeach
 
-            {{-- Groupes par département --}}
             @foreach($activeUsers as $type => $usersInGroup)
-                {{-- Ligne de séparation département --}}
                 @php
                     $deptBg = match($type) {
                         'D' => 'bg-violet-100 text-violet-800',
@@ -169,7 +163,7 @@
                 @endphp
                 <div class="col-span-7 {{ $deptBg }} font-bold text-sm px-3 py-1 border rounded mt-2 flex items-center justify-between">
                     <span>{{ $deptLabels[$type] ?? $type }}</span>
-                    @if(auth()->user()->is_admin())
+                    @if(auth()->user()->canEditGlobalPlanning())
                         <button type="button"
                                 @click="$dispatch('open-student-assignment', { letter: '{{ $type }}' })"
                                 class="btn btn-xs btn-ghost tooltip tooltip-left"
@@ -179,10 +173,8 @@
                     @endif
                 </div>
 
-                {{-- Une ligne par utilisateur du groupe --}}
                 @foreach($usersInGroup->sortBy('name') as $user)
                     @php $isStudent = str_contains((string) ($user->acces_level ?? ''), 'ET'); @endphp
-                    {{-- Colonne nom --}}
                     <div class="border p-2 rounded bg-gray-50 flex items-center gap-1.5">
                         @if($isStudent)
                             <i class="fa-solid fa-user-graduate text-indigo-500 text-xs tooltip" data-tip="Étudiant" title="Étudiant"></i>
@@ -190,7 +182,6 @@
                         <span class="text-sm font-medium">{{ $user->name }} {{ $user->firstname }}</span>
                     </div>
 
-                    {{-- Une cellule par jour --}}
                     @foreach($daysInWeek as $day)
                     @php
                         $dateStr   = $day->toDateString();
@@ -285,10 +276,10 @@
                 @endforeach
             @endforeach
         </div>
-        </div>{{-- /overflow-x-auto --}}
+        </div>
 
         @include('partials.planning-day-modal')
-        </div>{{-- /x-data adminPlanningGrid --}}
+        </div>
     </div>
 </div>
 

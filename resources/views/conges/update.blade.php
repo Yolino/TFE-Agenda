@@ -54,7 +54,7 @@
                     @endforeach
                 </tbody>
             </table>
-            </div>{{-- /overflow-x-auto --}}
+            </div>
         </div>
         <div class="lg:basis-1/4">
             <form action="" method="post">
