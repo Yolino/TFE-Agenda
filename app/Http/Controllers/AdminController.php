@@ -89,7 +89,7 @@ class AdminController extends Controller
         
         $users = $currentAgence
             ? User::with(['planningTemplates', 'profile', 'departements'])
-                ->where('actif', true)
+                ->activeInAgenda()
                 ->whereIn('id', $ids)
                 ->get()
             : collect();
@@ -326,7 +326,7 @@ class AdminController extends Controller
             : collect();
 
         $users = User::with(['profile', 'departements', 'agences.societe'])
-            ->where('actif', true)
+            ->activeInAgenda()
             ->whereIn('id', $userIdsInAgence)
             ->get();
 
@@ -609,7 +609,7 @@ class AdminController extends Controller
         }
 
         $users = User::with(['profile', 'departements', 'agences.societe'])
-            ->where('actif', true)
+            ->activeInAgenda()
             ->whereIn('id', $userIdsInAgence)
             ->get();
 

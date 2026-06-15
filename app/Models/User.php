@@ -98,6 +98,16 @@ protected $connection = 'bti';
             });
     }
 
+    public function scopeActiveInAgenda(Builder $query): Builder
+    {
+        $locallyInactiveIds = UserAgendaProfile::query()
+            ->where('actif', false)
+            ->pluck('user_id');
+
+        return $query->where('actif', true)
+            ->whereNotIn('id', $locallyInactiveIds);
+    }
+
     public function is_admin(): bool
     {
         return (bool) ($this->profile?->is_admin);

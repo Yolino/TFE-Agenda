@@ -72,6 +72,16 @@ trait BuildsTestSchema
             $table->timestamps();
         });
 
+        $schema->create('user_agenda_profiles', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->unique();
+            $table->string('fixe')->nullable();
+            $table->text('remarque')->nullable();
+            $table->boolean('actif')->default(true);
+            $table->boolean('is_admin')->default(false);
+            $table->timestamps();
+        });
+
         $schema->create('logs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable();
